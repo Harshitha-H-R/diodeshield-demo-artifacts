@@ -1,0 +1,15 @@
+services:
+  backend:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DIODESHIELD_DB: /app/data/diodeshield.db
+    volumes: ["diodeshield-data:/app/data"]
+  demo:
+    build: .
+    profiles: ["demo"]
+    depends_on: [backend]
+    command: ["python", "-m", "diodeshield.cli", "--scenario", "protocol"]
+    volumes: ["diodeshield-data:/app/data"]
+volumes:
+  diodeshield-data:

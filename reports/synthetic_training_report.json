@@ -1,0 +1,94 @@
+{
+  "status": "synthetic_lab_evaluation",
+  "generated_at": "2026-09-09T15:22:01.545898+00:00",
+  "samples": 40,
+  "positive_samples": 30,
+  "negative_samples": 10,
+  "feature_schema_version": "1.0.0",
+  "safety": "metadata-only; no malformed packets or non-loopback traffic",
+  "models": {
+    "xgboost": {
+      "version": "fallback-tabular-0.1",
+      "mode": "fallback_or_online_warmup",
+      "metrics": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "predicted_positive": 0,
+        "true_positive": 0,
+        "false_positive": 0,
+        "false_negative": 30
+      }
+    },
+    "lstm": {
+      "version": "fallback-sequence-0.1",
+      "mode": "fallback_or_online_warmup",
+      "metrics": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "predicted_positive": 0,
+        "true_positive": 0,
+        "false_positive": 0,
+        "false_negative": 30
+      }
+    },
+    "fft": {
+      "version": "signal-0.1",
+      "mode": "fallback_or_online_warmup",
+      "metrics": {
+        "precision": 1.0,
+        "recall": 0.3333,
+        "f1": 0.5,
+        "predicted_positive": 10,
+        "true_positive": 10,
+        "false_positive": 0,
+        "false_negative": 20
+      }
+    },
+    "kitsune": {
+      "version": "diodeshield-adapted-kitnet-fallback-0.1",
+      "mode": "fallback_or_online_warmup",
+      "metrics": {
+        "precision": 1.0,
+        "recall": 0.4,
+        "f1": 0.5714,
+        "predicted_positive": 12,
+        "true_positive": 12,
+        "false_positive": 0,
+        "false_negative": 18
+      }
+    },
+    "isolation_forest": {
+      "version": "fallback-0.1",
+      "mode": "fallback_or_online_warmup",
+      "metrics": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "predicted_positive": 0,
+        "true_positive": 0,
+        "false_positive": 0,
+        "false_negative": 30
+      }
+    }
+  },
+  "fusion": {
+    "weights": {
+      "xgboost": 0.4,
+      "lstm": 0.2,
+      "fft": 0.15,
+      "kitsune": 0.15,
+      "isolation_forest": 0.1
+    },
+    "metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "predicted_positive": 0,
+      "true_positive": 0,
+      "false_positive": 0,
+      "false_negative": 30
+    }
+  }
+}

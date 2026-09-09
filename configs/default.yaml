@@ -1,0 +1,36 @@
+system:
+  mode: synthetic
+  sensor_version: "0.1.0"
+  live_capture: true
+window:
+  size_seconds: 5
+  slide_seconds: 1
+models:
+  xgboost: true
+  lstm: true
+  fft: true
+  kitsune: true
+  isolation_forest: true
+model_artifacts: {}
+fusion:
+  xgboost: 0.40
+  lstm: 0.20
+  fft: 0.15
+  kitsune: 0.15
+  isolation_forest: 0.10
+risk:
+  critical: 0.85
+  high: 0.70
+  medium: 0.50
+  low: 0.30
+persistence:
+  enabled: true
+  consecutive_windows: 3
+  cooldown_seconds: 30
+retention:
+  raw_events_days: 7
+  features_days: 30
+  alerts_days: 365
+security:
+  api_key_required: false
+  allow_payload: false

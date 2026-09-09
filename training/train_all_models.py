@@ -1,0 +1,152 @@
+"""Train DIODESHIELD branches on a verified open dataset.
+
+The historical synthetic harness remains available only with ``--synthetic``
+and is never reported as production training. The default command validates a
+dataset contract and fails clearly when a licensed, checksummed dataset is not
+available.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from diodeshield.features.builder import extract_features
+from diodeshield.fusion import fuse
+from diodeshield.models.adapters import enabled_adapters
+from diodeshield.schemas import TrafficEvent
+
+# Import training modules - handle both direct execution and package context
+try:
+    from training.dataset_contract import DatasetContractError
+    from training.production import train_production
+except ImportError:
+    import sys
+    from pathlib import Path as _Path
+    _training_path = _Path(__file__).parent
+    sys.path.insert(0, str(_training_path.parent))
+    from training.dataset_contract import DatasetContractError
+    from training.production import train_production
+
+
+def _events(kind: str, index: int, count: int = 20) -> list[TrafficEvent]:
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=index)
+    result: list[TrafficEvent] = []
+    for packet in range(count):
+        if kind == "udp_burst":
+            protocol, destination, port, length, gap = "UDP", "127.0.0.1", 19001, 1200, 0.004
+        elif kind == "recon":
+            protocol, destination, port, length, gap = "TCP", f"10.0.0.{(packet % 15) + 1}", 1000 + packet, 64, 0.2
+        elif kind == "protocol_anomaly":
+            protocol, destination, port, length, gap = "TCP", "10.0.0.2", 502, 256, 0.1
+        else:
+            protocol, destination, port, length, gap = "TCP", "10.0.0.2", 502, 128, 1.0
+        result.append(
+            TrafficEvent(
+                timestamp=start + timedelta(seconds=packet * gap),
+                src_ip="127.0.0.1" if kind == "udp_burst" else "10.0.0.1",
+                dst_ip=destination,
+                src_port=40000 + (packet % 3),
+                dst_port=port,
+                protocol=protocol,
+                packet_len=length,
+                data_source="synthetic_training",
+                payload_hex="00010000000101ff00" if kind == "protocol_anomaly" else None,
+            )
+        )
+    return result
+
+
+def _dataset() -> tuple[list[dict[str, float | str]], np.ndarray]:
+    rows: list[dict[str, float | str]] = []
+    labels: list[int] = []
+    for index in range(40):
+        kind = "normal" if index < 10 else ["udp_burst", "recon", "protocol_anomaly"][(index - 10) % 3]
+        rows.append(extract_features(_events(kind, index)))
+        labels.append(0 if kind == "normal" else 1)
+    return rows, np.asarray(labels)
+
+
+def _evaluate(scores: list[float], labels: np.ndarray) -> dict[str, float]:
+    predicted = np.asarray(scores) >= 0.5
+    positive = labels == 1
+    tp = int(np.sum(predicted & positive))
+    fp = int(np.sum(predicted & ~positive))
+    fn = int(np.sum(~predicted & positive))
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    return {
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(2 * precision * recall / (precision + recall), 4) if precision + recall else 0.0,
+        "predicted_positive": int(predicted.sum()),
+        "true_positive": tp,
+        "false_positive": fp,
+        "false_negative": fn,
+    }
+
+
+def train(output: Path) -> dict[str, Any]:
+    config = {
+        "models": {"xgboost": True, "lstm": True, "fft": True, "kitsune": True, "isolation_forest": True},
+        "fusion": {"xgboost": 0.4, "lstm": 0.2, "fft": 0.15, "kitsune": 0.15, "isolation_forest": 0.1},
+    }
+    rows, labels = _dataset()
+    adapters = enabled_adapters(config)
+    scores_by_model: dict[str, list[float]] = {name: [] for name in adapters}
+    fused: list[float] = []
+    for row in rows:
+        scores = {name: adapter.score(row) for name, adapter in adapters.items()}
+        for adapter in adapters.values():
+            if hasattr(adapter, "update"):
+                adapter.update(row)
+        for name, score in scores.items():
+            scores_by_model[name].append(score)
+        fused.append(float(fuse(scores, config["fusion"])["score"]))
+    report: dict[str, Any] = {
+        "status": "synthetic_lab_evaluation",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "samples": len(rows),
+        "positive_samples": int(labels.sum()),
+        "negative_samples": int((labels == 0).sum()),
+        "feature_schema_version": "1.0.0",
+        "safety": "metadata-only; no malformed packets or non-loopback traffic",
+        "models": {name: {"version": adapter.version, "mode": "fallback_or_online_warmup",
+                          "metrics": _evaluate(values, labels)}
+                   for (name, adapter), values in zip(adapters.items(), scores_by_model.values())},
+        "fusion": {"weights": config["fusion"], "metrics": _evaluate(fused, labels)},
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return report
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train DIODESHIELD branches on verified open data")
+    parser.add_argument("--dataset", type=Path, default=Path("data/training/dataset.csv"))
+    parser.add_argument("--manifest", type=Path, default=Path("training/dataset_manifest.json"))
+    parser.add_argument("--output-dir", type=Path, default=Path("models"))
+    parser.add_argument("--download", action="store_true",
+                        help="download the manifest URL when the verified file is absent")
+    parser.add_argument("--synthetic", action="store_true",
+                        help="run the non-production metadata-only evaluation harness")
+    parser.add_argument("--output", type=Path, default=Path("reports/synthetic_training_report.json"),
+                        help=argparse.SUPPRESS)
+    args = parser.parse_args()
+    if args.synthetic:
+        report = train(args.output)
+        print(json.dumps(report, indent=2))
+        return
+    try:
+        report = train_production(args.dataset, args.manifest, args.output_dir, download=args.download)
+    except DatasetContractError as exc:
+        raise SystemExit(f"PRODUCTION TRAINING NOT RUN: {exc}") from exc
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()

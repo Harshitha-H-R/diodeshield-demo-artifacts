@@ -1,0 +1,1 @@
+"""Receive-side ingestion adapters."""

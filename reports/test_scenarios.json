@@ -1,0 +1,443 @@
+{
+  "status": "training_data_collection",
+  "generated_at": "2026-09-09T15:28:13.230779+00:00",
+  "safety": "metadata-only; no packet crafting, no external traffic, loopback-safe",
+  "scenarios": {
+    "normal": {
+      "description": "Normal traffic patterns",
+      "count": 100,
+      "is_attack": false,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.0626,
+          "std": 0.0,
+          "min": 0.0626,
+          "max": 0.0626
+        },
+        "lstm": {
+          "mean": 0.0097,
+          "std": 0.0,
+          "min": 0.0097,
+          "max": 0.0097
+        },
+        "fft": {
+          "mean": 0.065,
+          "std": 0.0,
+          "min": 0.065,
+          "max": 0.065
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.02,
+          "std": 0.0,
+          "min": 0.02,
+          "max": 0.02
+        },
+        "fused": {
+          "mean": 0.0387,
+          "std": 0.0,
+          "min": 0.0387,
+          "max": 0.0387
+        }
+      }
+    },
+    "udp_burst": {
+      "description": "UDP flood attack simulation",
+      "count": 80,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.24,
+          "std": 0.0,
+          "min": 0.24,
+          "max": 0.24
+        },
+        "lstm": {
+          "mean": 0.0862,
+          "std": 0.0,
+          "min": 0.0862,
+          "max": 0.0862
+        },
+        "fft": {
+          "mean": 0.1486,
+          "std": 0.0,
+          "min": 0.1486,
+          "max": 0.1486
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.22,
+          "std": 0.0,
+          "min": 0.22,
+          "max": 0.22
+        },
+        "fused": {
+          "mean": 0.1575,
+          "std": 0.0,
+          "min": 0.1575,
+          "max": 0.1575
+        }
+      }
+    },
+    "tcp_scan": {
+      "description": "TCP port scan reconnaissance",
+      "count": 60,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.19,
+          "std": 0.0,
+          "min": 0.19,
+          "max": 0.19
+        },
+        "lstm": {
+          "mean": 0.084,
+          "std": 0.0,
+          "min": 0.084,
+          "max": 0.084
+        },
+        "fft": {
+          "mean": 0.1494,
+          "std": 0.0,
+          "min": 0.1494,
+          "max": 0.1494
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.02,
+          "std": 0.0,
+          "min": 0.02,
+          "max": 0.02
+        },
+        "fused": {
+          "mean": 0.1172,
+          "std": 0.0,
+          "min": 0.1172,
+          "max": 0.1172
+        }
+      }
+    },
+    "dns_tunnel": {
+      "description": "DNS exfiltration attempt",
+      "count": 40,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.0578,
+          "std": 0.0,
+          "min": 0.0578,
+          "max": 0.0578
+        },
+        "lstm": {
+          "mean": 0.008,
+          "std": 0.0,
+          "min": 0.008,
+          "max": 0.008
+        },
+        "fft": {
+          "mean": 0.037,
+          "std": 0.0,
+          "min": 0.037,
+          "max": 0.037
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.0241,
+          "std": 0.0,
+          "min": 0.0241,
+          "max": 0.0241
+        },
+        "fused": {
+          "mean": 0.0327,
+          "std": 0.0,
+          "min": 0.0327,
+          "max": 0.0327
+        }
+      }
+    },
+    "lateral_movement": {
+      "description": "Lateral movement detection",
+      "count": 50,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.4057,
+          "std": 0.0,
+          "min": 0.4057,
+          "max": 0.4057
+        },
+        "lstm": {
+          "mean": 0.0547,
+          "std": 0.0,
+          "min": 0.0547,
+          "max": 0.0547
+        },
+        "fft": {
+          "mean": 0.55,
+          "std": 0.0,
+          "min": 0.55,
+          "max": 0.55
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.2,
+          "std": 0.0,
+          "min": 0.2,
+          "max": 0.2
+        },
+        "fused": {
+          "mean": 0.2757,
+          "std": 0.0,
+          "min": 0.2757,
+          "max": 0.2757
+        }
+      }
+    },
+    "protocol_anomaly": {
+      "description": "Malformed protocol usage",
+      "count": 45,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.12,
+          "std": 0.0,
+          "min": 0.12,
+          "max": 0.12
+        },
+        "lstm": {
+          "mean": 0.0885,
+          "std": 0.0,
+          "min": 0.0885,
+          "max": 0.0885
+        },
+        "fft": {
+          "mean": 0.2186,
+          "std": 0.0,
+          "min": 0.2186,
+          "max": 0.2186
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.02,
+          "std": 0.0,
+          "min": 0.02,
+          "max": 0.02
+        },
+        "fused": {
+          "mean": 0.1005,
+          "std": 0.0,
+          "min": 0.1005,
+          "max": 0.1005
+        }
+      }
+    },
+    "data_exfiltration": {
+      "description": "Large data transfer anomaly",
+      "count": 35,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.19,
+          "std": 0.0,
+          "min": 0.19,
+          "max": 0.19
+        },
+        "lstm": {
+          "mean": 0.0844,
+          "std": 0.0,
+          "min": 0.0844,
+          "max": 0.0844
+        },
+        "fft": {
+          "mean": 0.2058,
+          "std": 0.0,
+          "min": 0.2058,
+          "max": 0.2058
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.02,
+          "std": 0.0,
+          "min": 0.02,
+          "max": 0.02
+        },
+        "fused": {
+          "mean": 0.1257,
+          "std": 0.0,
+          "min": 0.1257,
+          "max": 0.1257
+        }
+      }
+    },
+    "resource_exhaustion": {
+      "description": "CPU/memory pressure detection",
+      "count": 30,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.19,
+          "std": 0.0,
+          "min": 0.19,
+          "max": 0.19
+        },
+        "lstm": {
+          "mean": 0.1201,
+          "std": 0.0,
+          "min": 0.1201,
+          "max": 0.1201
+        },
+        "fft": {
+          "mean": 0.2756,
+          "std": 0.0,
+          "min": 0.2756,
+          "max": 0.2756
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.02,
+          "std": 0.0,
+          "min": 0.02,
+          "max": 0.02
+        },
+        "fused": {
+          "mean": 0.1433,
+          "std": 0.0,
+          "min": 0.1433,
+          "max": 0.1433
+        }
+      }
+    },
+    "beaconing": {
+      "description": "Command & control beacon",
+      "count": 25,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.0403,
+          "std": 0.0,
+          "min": 0.0403,
+          "max": 0.0403
+        },
+        "lstm": {
+          "mean": 0.0075,
+          "std": 0.0,
+          "min": 0.0075,
+          "max": 0.0075
+        },
+        "fft": {
+          "mean": 0.075,
+          "std": 0.0,
+          "min": 0.075,
+          "max": 0.075
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.02,
+          "std": 0.0,
+          "min": 0.02,
+          "max": 0.02
+        },
+        "fused": {
+          "mean": 0.0309,
+          "std": 0.0,
+          "min": 0.0309,
+          "max": 0.0309
+        }
+      }
+    },
+    "encryption_anomaly": {
+      "description": "Unexpected encryption patterns",
+      "count": 20,
+      "is_attack": true,
+      "model_analysis": {
+        "xgboost": {
+          "mean": 0.1299,
+          "std": 0.0,
+          "min": 0.1299,
+          "max": 0.1299
+        },
+        "lstm": {
+          "mean": 0.0082,
+          "std": 0.0,
+          "min": 0.0082,
+          "max": 0.0082
+        },
+        "fft": {
+          "mean": 0.055,
+          "std": 0.0,
+          "min": 0.055,
+          "max": 0.055
+        },
+        "kitsune": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "isolation_forest": {
+          "mean": 0.0259,
+          "std": 0.0,
+          "min": 0.0259,
+          "max": 0.0259
+        },
+        "fused": {
+          "mean": 0.0644,
+          "std": 0.0,
+          "min": 0.0644,
+          "max": 0.0644
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "total_samples": 485,
+    "attack_samples": 385,
+    "normal_samples": 100,
+    "feature_schema_version": "1.0.0"
+  }
+}

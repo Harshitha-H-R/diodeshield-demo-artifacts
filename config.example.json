@@ -1,0 +1,12 @@
+{
+  "passive_capture_enabled": false,
+  "capture_interface": "eth0",
+  "packet_filter": "tcp or udp",
+  "snapshot_length": 65535,
+  "zeek_enabled": false,
+  "tshark_enabled": false,
+  "dashboard_port": 8080,
+  "api_port": 5000,
+  "max_events_buffer": 10000,
+  "log_level": "INFO"
+}
