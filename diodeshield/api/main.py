@@ -16,6 +16,7 @@ from diodeshield.capture.live import LiveCaptureWorker
 from diodeshield.config import load_config
 from diodeshield.db import Repository
 from diodeshield.firewall import block_ip
+from diodeshield.integrity import verify_alert
 from diodeshield.pipeline import DetectionPipeline
 from diodeshield.schemas import BlockRequest, ConfigUpdate, Feedback, TrafficEvent
 
@@ -68,7 +69,19 @@ async def optional_api_key(request, call_next):
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {"status": "ok", "service": "diodeshield", **repository.health()}
+    from diodeshield.startup import CaptureConfig
+    tools = CaptureConfig.validate_capture_tools()
+    training_status = {name: adapter.get_metadata().get("training_status", "not_trained")
+                       for name, adapter in pipeline.adapters.items()}
+    return {
+        "status": "ok",
+        "service": "diodeshield",
+        "zeek_available": tools.get("zeek", False),
+        "tshark_available": tools.get("tshark", False),
+        "fallback_ready": True,
+        "training_status": training_status,
+        **repository.health(),
+    }
 
 
 @app.get("/health/detailed")
@@ -148,10 +161,12 @@ def validate_alert(alert_id: str) -> dict[str, Any]:
         "models": result.get("model_scores", {}),
         "integrity": {"evidence_hash": result.get("evidence_hash"),
                       "previous_hash": result.get("previous_hash"),
-                      "chain_sequence": result.get("chain_sequence")},
+                      "chain_sequence": result.get("chain_sequence"),
+                      "verified": verify_alert(result)},
         "limitations": ["This is an evidence-based triage verdict, not proof of compromise.",
                         "Packet alteration and spoofing require trusted capture metadata or baselines."],
     }
+
 
 
 @app.get("/api/traffic")
@@ -225,6 +240,11 @@ def model_timeseries(limit: int = 100) -> list[dict[str, Any]]:
 @app.get("/api/evidence-chain")
 def evidence_chain(limit: int = 100) -> list[dict[str, Any]]:
     return repository.evidence_chain(limit)
+
+
+@app.get("/api/integrity")
+def integrity() -> dict[str, Any]:
+    return repository.verify_integrity()
 
 
 @app.get("/api/report")

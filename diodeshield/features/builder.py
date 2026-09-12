@@ -140,6 +140,19 @@ def extract_features(events: list[TrafficEvent], baseline: dict[str, float] | No
         event, "virtual_identity", "ip_spoofing", "spoofed", "mac_ip_conflict"))
     values["ip_spoofing_score"] = float(spoofed / len(ordered))
     values["identity_anomaly_score"] = values["ip_spoofing_score"]
+
+    # Beaconing and periodicity features distinguishing standard OT polling from C2 beaconing
+    ot_ports = {502, 102, 20000, 44818, 4840}
+    is_ot_port = any(p in ot_ports for p in ports if isinstance(p, (int, float)))
+    suspicious_c2 = any(p in {4444, 1337, 8443, 9001} or (p not in ot_ports and p > 1024)
+                        for p in ports if isinstance(p, (int, float)))
+    regularity = max(0.0, min(1.0, 1.0 - (values["iat_cv"] / 0.20))) if values["packets"] >= 4 and values["iat_mean"] > 0 else 0.0
+    values["periodicity_score"] = float(max(values.get("periodicity_score", 0.0), regularity * 4.0))
+    if is_ot_port and not suspicious_c2:
+        values["beacon_score"] = 0.0
+    else:
+        values["beacon_score"] = float(min(1.0, 0.6 * regularity + 0.4 * (1.0 if suspicious_c2 else 0.5)))
+
     # A bounded, explainable behavior signal combines independent metadata-only
     # indicators.  It intentionally does not classify an event by itself.
     values["behavior_anomaly_score"] = float(min(
@@ -148,7 +161,8 @@ def extract_features(events: list[TrafficEvent], baseline: dict[str, float] | No
         + 0.35 * _norm_feature(values.get("fan_out", 0), 10.0)
         + 0.15 * _norm_feature(values.get("port_diversity", 0), 10.0)
         + 0.15 * float(values.get("udp_burst_score", 0))
-        + 0.10 * _norm_feature(values.get("periodicity_score", 0), 10.0),
+        + 0.10 * _norm_feature(values.get("periodicity_score", 0), 10.0)
+        + 0.15 * float(values.get("beacon_score", 0)),
     ))
     return values
 

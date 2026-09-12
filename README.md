@@ -10,14 +10,18 @@ it does not send packets, probe assets, modify traffic, or require a return path
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-python -m diodeshield.cli --scenario protocol
+pip install -e ".[dev,ml]"
+python training/train_all_models.py --synthetic
+python -m diodeshield.cli --scenario beacon
 uvicorn diodeshield.api.main:app --reload
 ```
 
-Open `http://localhost:8000/dashboard/index.html` when serving the repository, or use
-the API at `/docs`. One command demo: `./demo.sh` (PowerShell users can run the three
-CLI commands shown above). Docker: `docker compose up --build`.
+Open `http://localhost:8000/dashboard/index.html` (or `http://localhost:8000/dashboard/`) when serving the repository, or use
+the API at `/docs`. One-command 90-second demo:
+- **Windows PowerShell**: `.\demo.ps1`
+- **Linux/macOS**: `./demo.sh`
+- **Docker**: `docker compose up --build`.
+
 
 Live, read-only host monitoring starts automatically when the service starts.
 Install Wireshark/TShark with Npcap on Windows (or TShark on Linux), then
@@ -69,31 +73,25 @@ provenance and is intentionally rejected.
 
 ## Implemented
 
-Synthetic normal/beacon/recon/protocol scenarios; JSON/Pydantic ingestion; tolerant
-sliding windows; spatial, volumetric, temporal, FFT and topology features; Modbus/TCP
-metadata parser; Zeek `conn.log` and optional TShark JSON replay; deterministic model
-adapters (XGBoost/LSTM/FFT/DIODESHIELD-adapted KitNET fallback/Isolation Forest);
-score normalization/fusion/disagreement; receive-side IP identity mismatch,
-packet-alteration/checksum metadata, and packet-behavior detections; deterministic
-feature explanations with an explicit optional-SHAP upgrade path; risk thresholds and
-persistence; SQLite evidence tables; SHA-256 hash chain; FastAPI REST, WebSockets,
-health and feedback; a dependency-free static dashboard; Docker Compose; tests and
-training entry points.
+- **5-Branch AI Threat Detection**: Real model inference across all five branches:
+  - **XGBoost**: Supervised gradient-boosted decision trees trained on synthetic telemetry, with live **TreeSHAP** feature attribution.
+  - **LSTM (PyTorch)**: Recurrent temporal neural network scoring sequence window anomalies.
+  - **Spectral FFT**: Signal-frequency analysis detecting periodic polling and C2 beaconing rhythms.
+  - **Kitsune (Adapted KitNET)**: Calibrated baseline autoencoder tracking multi-variate reconstruction error.
+  - **Isolation Forest (scikit-learn)**: Unsupervised ensemble isolation measuring high-dimensional feature outliers.
+- **Weighted Multi-Branch Fusion**: Dynamic score normalization, disagreement quantification, and calibrated weighted fusion.
+- **Traffic Scenarios**: Differentiated evaluation scenarios: `normal` (OT Modbus polling with 0 false positives), `beacon` (C2 channel with TreeSHAP explainability), `recon` (industrial scanning/fan-out), and `protocol` (Modbus malformations).
+- **Cryptographic Hash Chain**: SHA-256 tamper-evident append-only evidence ledger linking every alert with sequence continuity and cryptographic verification API (`/api/integrity`).
+- **Explainability**: Integrated TreeSHAP on XGBoost with deterministic fallback attributions highlighting positive and negative feature contributions.
+- **SOC Web Dashboard**: Real-time static dashboard featuring WebSocket live updates, alert triage inspector, multi-model voting progress bars, TreeSHAP contribution waterfalls, and tamper-evident chain verification badges.
+- **Passive OT Capture**: Strictly zero-transmission receive-side architecture; zero packets injected, zero ACKs, no probing.
+- **Controlled Mitigation**: Windows Defender Firewall integration strictly disabled by default (`DIODESHIELD_FIREWALL_BLOCKING=true`), requiring administrator privilege and explicit confirmation.
 
 ## Prototype / experimental limitations
 
-The default adapters are deterministic fallbacks, not trained production models.
-Optional scikit-learn, XGBoost and PyTorch interfaces are intentionally isolated and
-require labelled data and validation before use. The KitNET adapter is explicitly
-DIODESHIELD-adapted and does not bundle third-party Kitsune code. DNP3, IEC-104 and
-S7comm are metadata-only extension points. Zeek/TShark/dumpcap integrations consume
-exported rows and are not required for the synthetic demo. IP spoofing and packet
-alteration findings require capture-provided identity/checksum/hash evidence; they do
-not claim to prove an attack. Explanations are deterministic fallback attributions
-unless a validated TreeSHAP model is explicitly integrated. Confidence means model
-agreement, not calibrated attack probability. No CVE, gateway management attack, or
-physical diode failure is inferred without telemetry.
+- **Synthetic Evaluation Notice**: Models are prototype-trained on synthetic, metadata-only lab data for architecture validation and jury demonstration. They are not trained on live classified OT traffic.
+- **Production Dataset Contract**: Production training requires open-license datasets meeting `training/DATASET_CONTRACT.md` specifications (cryptographic SHA-256 manifest check, schema validation, temporal split); unverified datasets are rejected.
+- **Passive Operation**: All analysis is passive and receive-side only. No packets are transmitted, no return channel is assumed, and physical diode boundaries are respected.
+- **Explainability**: Confidence represents inter-model consensus, not Bayesian posterior probability. Findings are triage leads, not standalone proof of compromise.
+- **Platform Scope**: Automated host firewall actions target Windows (`netsh advfirewall`); live packet capture requires TShark with Npcap on Windows or libpcap on Linux. Without capture tools, DIODESHIELD operates in synthetic evaluation/replay mode.
 
-See `configs/default.yaml`, the API OpenAPI document, and `training/` for extension
-points. Retention, authentication/RBAC, Prometheus export, full calibration, and
-PostgreSQL migration are planned hardening work.

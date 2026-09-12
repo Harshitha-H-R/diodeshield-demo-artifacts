@@ -3,7 +3,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
-data/
-models/*.json
+data/*.db
+data/*.sqlite
 *.db
 *.sqlite
+

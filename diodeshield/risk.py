@@ -41,12 +41,18 @@ class RiskEngine:
                     float(features.get("payload_integrity_anomaly", 0)) * 0.35 +
                     float(features.get("ip_spoofing_score", features.get("identity_anomaly_score", 0))) * 0.45 +
                     float(features.get("packet_alteration_score", 0)) * 0.45 +
+                    float(features.get("beacon_score", 0)) * 0.50 +
                     float(features.get("behavior_anomaly_score", 0)) * 0.25 +
                     min(1.0, float(features.get("fan_out", 0)) / 10.0) * 0.30 +
                     min(1.0, float(features.get("port_diversity", 0)) / 10.0) * 0.15 +
                     float(asset_criticality) * 0.05)
         t = self.thresholds
-        level = "CRITICAL" if score >= t.get("critical", .85) else "HIGH" if score >= t.get("high", .7) else "MEDIUM" if score >= t.get("medium", .5) else "LOW" if score >= t.get("low", .3) else "INFO"
+        high_models = sum(1 for v in fusion.get("scores", {}).values() if float(v) >= 0.90)
+        is_critical = score >= t.get("critical", 0.85) or high_models >= 2
+        crit_thresh = t.get("critical", 0.85)
+        warn_thresh = t.get("warning", t.get("high", 0.60))
+        info_thresh = t.get("info", t.get("medium", 0.35))
+        level = "CRITICAL" if is_critical else "WARNING" if score >= warn_thresh else "INFO" if score >= info_thresh else "LOW"
         reasons = []
         if features.get("fan_out", 0) > 5:
             reasons.append("unusual destination fan-out")
@@ -64,6 +70,9 @@ class RiskEngine:
             reasons.append("source identity mismatch metadata observed")
         if features.get("packet_alteration_score", 0) > 0:
             reasons.append("packet alteration or checksum mismatch metadata observed")
+        if features.get("beacon_score", 0) >= 0.4:
+            reasons.append("periodic beaconing behavior observed")
+
         if features.get("behavior_anomaly_score", 0) >= 0.5:
             reasons.append("packet behavior differs from the receive-side baseline")
         return {"risk_score": score, "risk_level": level, "confidence": max(0.0, 1.0 - fusion.get("model_disagreement", 0)),

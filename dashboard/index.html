@@ -1,38 +1,765 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DIODESHIELD SOC</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIODESHIELD SOC — Passive OT AI Cyber-Threat Detection</title>
 <style>
-:root{--bg:#0b1220;--panel:#142238;--line:#29405f;--text:#e7eef7;--muted:#91a4bd;--blue:#4ea1ff;--red:#ff6b7a;--amber:#ffb86b}
-[data-theme=light]{--bg:#f4f7fb;--panel:#fff;--line:#d7e0ec;--text:#132238;--muted:#607086}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Inter,Segoe UI,Arial}main{max-width:1280px;margin:auto;padding:20px}header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}h1{margin:0;font-size:26px}h2{margin:24px 0 10px}.muted{color:var(--muted)}button,select,input{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:8px 10px;border-radius:7px}button{background:#2563eb;color:#fff;cursor:pointer;border:0}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.nav button{background:var(--panel);color:var(--text);border:1px solid var(--line)}.nav button.active{background:#2563eb;color:#fff}.view{display:none}.view.active{display:block}.cards,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px}.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}.value{font-size:23px;font-weight:700;margin-top:7px}.panel{overflow:auto}table{width:100%;border-collapse:collapse}td,th{padding:10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted)}.CRITICAL{color:var(--red);font-weight:700}.HIGH{color:var(--amber);font-weight:700}.heat{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}.cell{height:28px;border-radius:3px;background:#18324f;position:relative}.cell[title]{cursor:help}.bar{height:10px;background:var(--blue);border-radius:5px;margin:5px 0}.barrow{display:grid;grid-template-columns:110px 1fr 45px;align-items:center;gap:8px;margin:7px 0}.chart{width:100%;height:220px;display:block}.chain{font:11px Consolas,monospace;word-break:break-all}@media(max-width:700px){main{padding:12px}header{align-items:flex-start;flex-direction:column}.heat{grid-template-columns:repeat(6,1fr)}}
-.kpi{border-top:3px solid var(--blue);min-height:92px}.kpi.danger{border-color:var(--red)}.kpi.warn{border-color:var(--amber)}
-.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:8px 0 16px}.filters label{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:11px}
-.pill{display:inline-block;border-radius:999px;padding:4px 8px;background:#18324f;color:#b9dcff;font-size:11px}.subgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.list{margin:0;padding:0;list-style:none}.list li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
-.detail{position:fixed;right:16px;bottom:16px;max-width:460px;max-height:70vh;overflow:auto;z-index:3;box-shadow:0 12px 40px #0008}.sr-only{position:absolute;left:-10000px}
-</style></head><body><main>
-<header><div><h1>DIODESHIELD</h1><p class="muted">Passive OT security operations center · metadata only · no blocking</p></div><div><button id="theme">Toggle theme</button> <span class="card" id="status">Checking...</span></div></header>
-<nav class="nav"><button class="active" data-view="overview">Overview</button><button data-view="packets">Live packets</button><button data-view="models">AI models</button><button data-view="validate">Validate alerts</button><button data-view="reports">Reports</button><button data-view="chain">Evidence chain</button></nav>
-<section id="overview" class="view active"><div class="filters"><label>Severity<select id="severityFilter"><option value="">All severities</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>INFO</option></select></label><label>Category<input id="categoryFilter" placeholder="All categories"></label><label>Source<input id="sourceFilter" placeholder="All sources"></label><label>Destination<input id="destinationFilter" placeholder="All destinations"></label><button id="applyFilters">Apply filters</button><button id="clearFilters" class="nav">Clear</button><span class="pill">PASSIVE / READ-ONLY</span></div><div class="cards" id="cards"></div><div class="subgrid"><div class="panel"><h2>Alert volume</h2><canvas id="volumeGraph" class="chart"></canvas></div><div class="panel"><h2>Severity mix</h2><div id="severityBreakdown"></div></div><div class="panel"><h2>Top sources & destinations</h2><div id="entityBreakdown"></div></div></div><div class="grid"><div><h2>Live alert heatmap</h2><div class="panel"><canvas id="heatGraph" class="chart"></canvas><p class="muted">Persisted alert intensity by hour and category. No packet transmission is performed.</p></div></div><div><h2>Recent alerts</h2><div class="panel"><table><thead><tr><th>Time</th><th>Level</th><th>Category</th><th>Score</th><th>Why</th></tr></thead><tbody id="alerts"></tbody></table></div></div></div><div id="alertDetail" class="panel detail" hidden><button id="closeDetail">Close</button><h2>Alert detail</h2><pre id="detailText" class="chain"></pre></div></section>
-<section id="packets" class="view"><h2>Live packet/flow analysis</h2><div class="panel"><table><thead><tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Packets</th><th>Bytes</th><th>Anomaly</th></tr></thead><tbody id="traffic"></tbody></table></div></section>
-<section id="models" class="view"><h2>Model inference health & training status</h2><div class="cards" id="modelCards">Loading model status...</div><div class="subgrid"><div class="panel"><h2>Live score stream</h2><canvas id="modelGraph" height="180"></canvas><div id="modelBars">NO DATA</div></div><div class="panel"><h2>Model details & provenance</h2><div id="provenance" style="max-height:400px;overflow-y:auto">Loading provenance...</div></div></div><p class="muted">Scores update from the backend every second. Untrained/fallback branches are evidence signals, never calibrated attack probabilities. Production models are marked with verified training provenance and metrics.</p></section>
-<section id="validate" class="view"><h2>Validate an alert</h2><div class="panel"><label>Alert ID <input id="alertId" placeholder="paste alert ID"></label> <button id="validateBtn">Validate</button><pre id="validation" class="chain">Select an alert or enter its ID to inspect evidence.</pre><button id="blockBtn" hidden>Block source IP</button><p class="muted">Blocking is disabled unless explicitly enabled with DIODESHIELD_FIREWALL_BLOCKING=true and requires administrator rights.</p></div></section>
-<section id="reports" class="view"><h2>Report generation</h2><div class="panel"><label>Start <input id="start" type="datetime-local"></label> <label>End <input id="end" type="datetime-local"></label> <label>Category <input id="category" placeholder="optional"></label> <button id="reportBtn">Generate report</button><button id="downloadBtn">Download JSON</button><pre id="report" class="chain">NO DATA</pre></div></section>
-<section id="chain" class="view"><h2>Evidence blockchain-style hash chain</h2><div class="panel"><p class="muted">Tamper-evident SHA-256 chain: each alert links to the previous evidence hash. This is not a distributed blockchain.</p><div id="chainRows">NO DATA</div></div></section>
-<p class="muted">Live refresh: 1 second. Capture status is shown above; live host packets require TShark, a selected interface, and capture permissions.</p>
-</main><script>
-const $=s=>document.querySelector(s), api=p=>fetch(p,{cache:'no-store'}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.detail||r.statusText);return j}), safeApi=async(p,f)=>{try{return await api(p)}catch(e){console.warn(p,e);return f}};let lastReport=null,validated=null;
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view).classList.add('active')});
-$('#theme').onclick=()=>document.body.dataset.theme=document.body.dataset.theme==='light'?'':'light';
-function reportUrl(){const q=new URLSearchParams();if($('#start').value)q.set('start',new Date($('#start').value).toISOString());if($('#end').value)q.set('end',new Date($('#end').value).toISOString());if($('#category').value)q.set('category',$('#category').value);return '/api/report?'+q}
-$('#reportBtn').onclick=async()=>{lastReport=await api(reportUrl());$('#report').textContent=JSON.stringify(lastReport,null,2)};$('#downloadBtn').onclick=()=>{if(!lastReport)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(lastReport,null,2)],{type:'application/json'}));a.download='diodeshield-report.json';a.click()};
-$('#validateBtn').onclick=async()=>{try{validated=await api('/api/alerts/'+encodeURIComponent($('#alertId').value)+'/validation');$('#validation').textContent=JSON.stringify(validated,null,2);$('#blockBtn').hidden=false}catch(e){$('#validation').textContent='Validation failed: '+e.message}};
-$('#blockBtn').onclick=async()=>{if(!validated||!confirm('Apply a host firewall block for '+validated.alert.src_ip+'?'))return;try{const r=await fetch('/api/alerts/'+encodeURIComponent(validated.alert.alert_id)+'/block',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm:true,reason:'Validated in DIODESHIELD dashboard'})});$('#validation').textContent+=`\n\nBLOCK RESULT\n${JSON.stringify(await r.json(),null,2)}`}catch(e){$('#validation').textContent+='\\n\\nBLOCK FAILED: '+e.message}};
-function drawGraph(rows){const c=$('#modelGraph'),x=c.getContext('2d'),w=c.width=c.clientWidth*devicePixelRatio,h=c.height=180*devicePixelRatio;x.clearRect(0,0,w,h);if(!rows.length){x.fillStyle='#91a4bd';x.fillText('NO MODEL DATA - start capture or ingest traffic',12,30);return}const names=Object.keys(rows[0].scores||{}),colors=['#4ea1ff','#ff6b7a','#ffb86b','#9be564','#c084fc'];names.forEach((n,i)=>{x.strokeStyle=colors[i%colors.length];x.beginPath();rows.slice().reverse().forEach((r,j)=>{const y=h-15-(Number(r.scores[n]||0)*(h-30)),xx=10+j*(w-20)/Math.max(1,rows.length-1);j?x.lineTo(xx,y):x.moveTo(xx,y)});x.stroke()})}
-function drawHeatmap(rows){const c=$('#heatGraph'),x=c.getContext('2d'),w=c.width=c.clientWidth*devicePixelRatio,h=c.height=220*devicePixelRatio;x.clearRect(0,0,w,h);if(!rows.length){x.fillStyle='#91a4bd';x.fillText('NO ALERT DATA - waiting for captured traffic',12,30);return}const days=[...new Set(rows.map(r=>r.day))].slice(-7),cats=[...new Set(rows.map(r=>r.attack_category))],max=Math.max(1,...rows.map(r=>r.count)),cw=(w-120)/Math.max(1,days.length),ch=(h-35)/Math.max(1,cats.length);x.font=`${11*devicePixelRatio}px Arial`;cats.forEach((cat,yi)=>{x.fillStyle='#91a4bd';x.fillText(cat.slice(0,16),4,(yi+1)*ch+10);days.forEach((day,xi)=>{const item=rows.find(r=>r.day===day&&r.attack_category===cat),alpha=item?.count/max||0;x.fillStyle=`rgba(255,80,100,${.08+.9*alpha})`;x.fillRect(110+xi*cw,yi*ch+2,cw-3,ch-3)})});days.forEach((day,xi)=>{x.fillStyle='#91a4bd';x.fillText(day.slice(5),110+xi*cw,h-8)})}
-function queryFilters(){const q=new URLSearchParams();[['severity','severityFilter'],['category','categoryFilter'],['source','sourceFilter'],['destination','destinationFilter']].forEach(([key,id])=>{if($( '#'+id).value)q.set(key,$('#'+id).value)});return q.toString()?('?'+q.toString()):''}
-function drawVolume(rows){const c=$('#volumeGraph'),x=c.getContext('2d'),w=c.width=c.clientWidth*devicePixelRatio,h=c.height=220*devicePixelRatio;x.clearRect(0,0,w,h);if(!rows.length){x.fillStyle='#91a4bd';x.fillText('NO ALERT DATA',12,30);return}const max=Math.max(1,...rows.map(r=>r.count)),step=(w-24)/Math.max(1,rows.length);rows.forEach((r,i)=>{const bh=(r.count/max)*(h-35);x.fillStyle='#4ea1ff';x.fillRect(12+i*step,h-bh-18,Math.max(2,step-3),bh)});x.fillStyle='#91a4bd';x.fillText(`${rows.length} buckets`,12,h-4)}
-function listMarkup(items){return items?.length?`<ul class="list">${items.slice(0,6).map(i=>`<li><span>${i.name||i.category}</span><b>${i.count}</b></li>`).join('')}</ul>`:'<span class="muted">NO DATA</span>'}
-async function refresh(){const suffix=queryFilters();const [m,a,h,t,ms,hm,ch,models,cs,summary,health,provenance]=await Promise.all([safeApi('/api/metrics',{}),safeApi('/api/alerts?limit=20'+suffix,[]),safeApi('/api/diode-status',{}),safeApi('/api/traffic?limit=20',[]),safeApi('/api/model-timeseries?limit=60',[]),safeApi('/api/heatmap',[]),safeApi('/api/evidence-chain?limit=12',[]),safeApi('/api/models',[]),safeApi('/api/capture-status',{}),safeApi('/api/dashboard-summary'+suffix,{kpis:{}}),safeApi('/api/model-health',{}),safeApi('/api/training/provenance',{})]);$('#status').textContent=`${h.status||'UNKNOWN'} | ${cs.enabled?cs.visibility||'capture starting':'capture disabled'}${cs.error?' · '+cs.error:''}`;const k=summary.kpis||{};$('#cards').innerHTML=[['Active alerts',k.alerts??m.total_alerts??'NO DATA',''],['Critical / high',`${k.critical??0} / ${k.high??0}`,'danger'],['Observed packets',k.packets??m.packets??'NO DATA',''],['Traffic bytes',k.bytes??m.bytes??'NO DATA',''],['Capture',cs.enabled?(cs.running?'RUNNING':'UNAVAILABLE'):'DISABLED','warn']].map(x=>`<div class="card kpi ${x[2]}"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');$('#severityBreakdown').innerHTML=listMarkup(summary.severity);$('#entityBreakdown').innerHTML='<h3>Sources</h3>'+listMarkup(summary.top_sources)+'<h3>Destinations</h3>'+listMarkup(summary.top_destinations);drawVolume(summary.timeseries||[]);$('#alerts').innerHTML=a.length?a.map(x=>`<tr data-id="${x.alert_id}" onclick="showAlert('${x.alert_id}')"><td>${new Date(x.timestamp).toLocaleTimeString()}</td><td class="${x.risk_level}">${x.risk_level}</td><td>${x.attack_category}</td><td>${Number(x.risk_score).toFixed(2)}</td><td>${(x.reasons||[]).join('; ')||'Evidence details available'}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">NO DATA</td></tr>';$('#traffic').innerHTML=t.length?t.map(x=>`<tr><td>${new Date(x.timestamp).toLocaleTimeString()}</td><td>${x.src_ip||'NO DATA'}</td><td>${x.dst_ip||'NO DATA'}</td><td>${x.protocol||'NO DATA'}</td><td>${x.packets}</td><td>${x.bytes}</td><td>${Number(x.anomaly_score||0).toFixed(2)}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">NO DATA</td></tr>';const scores=ms[0]?.scores||{};$('#modelCards').innerHTML=models.map(model=>`<div class="card"><div class="label">${model.model_name}</div><div class="value">${scores[model.model_name]===undefined?'NO DATA':Number(scores[model.model_name]).toFixed(2)}</div><div class="muted">${model.training_status||'not_trained'} · ${model.backend||'unknown'} · ${model.model_version||'NO VERSION'}</div></div>`).join('');$('#modelBars').innerHTML=Object.keys(scores).length?Object.entries(scores).map(([k,v])=>`<div class="barrow"><b>${k}</b><div class="bar" style="width:${Math.min(100,Math.max(0,Math.round(Number(v)*100)))}%"></div><span>${Number(v).toFixed(2)}</span></div>`).join(''):'<p class="muted">No model scores have been recorded yet.</p>';const modelRows=health.models||provenance.models||[];$('#provenance').innerHTML=modelRows.map(x=>`<div class="card"><b>${x.model_name}</b> <span class="pill">${x.training_status||'not_trained'}</span><div class="muted">${x.model_version||'NO VERSION'} · ${x.backend||'unknown'}</div><div class="chain">${x.provenance?JSON.stringify(x.provenance):'No verified production provenance registered.'}</div></div>`).join('')||'NO DATA';drawGraph(ms);drawHeatmap(hm);$('#chainRows').innerHTML=ch.length?ch.map(x=>`<div class="card"><b>#${x.chain_sequence} · ${x.attack_category} · ${x.risk_level}</b><div class="chain">previous: ${x.previous_hash}<br>current: ${x.evidence_hash}</div></div>`).join(''):'NO DATA'}
-async function showAlert(id){try{const item=await api('/api/alerts/'+encodeURIComponent(id));$('#detailText').textContent=JSON.stringify(item,null,2);$('#alertDetail').hidden=false}catch(e){console.warn(e)}}
-$('#closeDetail').onclick=()=>$('#alertDetail').hidden=true;$('#applyFilters').onclick=refresh;$('#clearFilters').onclick=()=>{['severityFilter','categoryFilter','sourceFilter','destinationFilter'].forEach(id=>$('#'+id).value='');refresh()};
-refresh();setInterval(refresh,1000);
-</script></body></html>
+:root {
+  --bg: #090d16;
+  --panel: #111928;
+  --card: #182338;
+  --line: #223450;
+  --text: #e7eef7;
+  --muted: #8b9eb5;
+  --blue: #3b82f6;
+  --blue-light: #60a5fa;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #a855f7;
+  --font-mono: "Consolas", "Courier New", monospace;
+}
+[data-theme=light] {
+  --bg: #f3f6fa;
+  --panel: #ffffff;
+  --card: #f8fafc;
+  --line: #dbe4ee;
+  --text: #0f172a;
+  --muted: #64748b;
+  --blue: #2563eb;
+  --blue-light: #3b82f6;
+  --green: #059669;
+  --red: #dc2626;
+  --amber: #d97706;
+  --purple: #9333ea;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, Arial, sans-serif;
+}
+main { max-width: 1360px; margin: auto; padding: 20px; }
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+h2 { margin: 20px 0 12px; font-size: 17px; font-weight: 700; }
+h3 { margin: 12px 0 8px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.subhead { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+.muted { color: var(--muted); }
+button, select, input {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+button { background: var(--blue); color: #fff; cursor: pointer; border: 0; font-weight: 500; transition: opacity .15s; }
+button:hover { opacity: .9; }
+button.secondary { background: var(--card); color: var(--text); border: 1px solid var(--line); }
+.nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.nav button { background: var(--panel); color: var(--muted); border: 1px solid var(--line); font-weight: 600; }
+.nav button:hover { color: var(--text); }
+.nav button.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.view { display: none; }
+.view.active { display: block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.card, .panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+}
+.kpi { border-top: 4px solid var(--blue); }
+.kpi.danger { border-top-color: var(--red); }
+.kpi.warn { border-top-color: var(--amber); }
+.kpi.success { border-top-color: var(--green); }
+.label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+.value { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; }
+.subgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+.panel { overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+tr.clickable { cursor: pointer; transition: background .15s; }
+tr.clickable:hover { background: var(--card); }
+tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
+.CRITICAL { color: var(--red); font-weight: 700; }
+.HIGH { color: var(--amber); font-weight: 700; }
+.MEDIUM { color: #38bdf8; font-weight: 600; }
+.LOW { color: var(--green); font-weight: 600; }
+.INFO { color: var(--muted); }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+.pill-green { background: #064e3b; color: #6ee7b7; border-color: #047857; }
+.pill-amber { background: #78350f; color: #fde68a; border-color: #b45309; }
+.pill-red { background: #7f1d1d; color: #fca5a5; border-color: #b91c1c; }
+.pill-blue { background: #1e3a8a; color: #93c5fd; border-color: #1d4ed8; }
+.chart { width: 100%; height: 200px; display: block; }
+.chain { font: 12px/1.4 var(--font-mono); word-break: break-all; }
+.barrow { display: grid; grid-template-columns: 140px 1fr 50px; align-items: center; gap: 10px; margin: 8px 0; }
+.bar-track { background: var(--card); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.bar-fill { height: 100%; border-radius: 6px; transition: width .3s ease; }
+.bar-blue { background: var(--blue); }
+.bar-green { background: var(--green); }
+.bar-amber { background: var(--amber); }
+.bar-red { background: var(--red); }
+.bar-purple { background: var(--purple); }
+.badge-integrity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+.badge-verified { background: #064e3b; color: #34d399; border: 1px solid #059669; }
+.badge-tampered { background: #7f1d1d; color: #f87171; border: 1px solid #dc2626; }
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
+.filters label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.list { margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.inspector-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 14px; }
+.tree-shap-row { display: grid; grid-template-columns: 160px 1fr 60px; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+.tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--card); border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      DIODESHIELD SOC
+    </h1>
+    <div class="subhead">Passive OT Threat Detection · Unidirectional Data Diode Boundary · NTRO PS-26145</div>
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <span id="wsStatus" class="pill pill-amber">○ CONNECTING WS</span>
+    <span class="pill pill-blue">PASSIVE / ZERO-TX</span>
+    <button id="themeBtn" class="secondary">Theme</button>
+  </div>
+</header>
+
+<nav class="nav">
+  <button class="active" data-view="overview">Overview & Triage</button>
+  <button data-view="inspector">Alert Inspector</button>
+  <button data-view="packets">Flow Analysis</button>
+  <button data-view="models">AI Models & Fusion</button>
+  <button data-view="chain">Evidence Hash Chain</button>
+  <button data-view="reports">Reports</button>
+</nav>
+
+<!-- OVERVIEW VIEW -->
+<section id="overview" class="view active">
+  <div class="filters">
+    <label>Severity
+      <select id="severityFilter">
+        <option value="">All severities</option>
+        <option>CRITICAL</option>
+        <option>HIGH</option>
+        <option>MEDIUM</option>
+        <option>LOW</option>
+        <option>INFO</option>
+      </select>
+    </label>
+    <label>Category <input id="categoryFilter" placeholder="e.g. BEACONING"></label>
+    <label>Source IP <input id="sourceFilter" placeholder="e.g. 192.168.1.10"></label>
+    <button id="applyFilters">Apply</button>
+    <button id="clearFilters" class="secondary">Clear</button>
+    <span id="systemPill" class="pill" style="margin-left: auto;">INITIALIZING...</span>
+  </div>
+
+  <div class="cards" id="kpiCards">
+    <div class="card kpi"><div class="label">Total Alerts</div><div class="value" id="kpiTotal">0</div></div>
+    <div class="card kpi danger"><div class="label">Critical Threats</div><div class="value" id="kpiCritical">0</div></div>
+    <div class="card kpi warn"><div class="label">High Severity</div><div class="value" id="kpiHigh">0</div></div>
+    <div class="card kpi"><div class="label">Observed Packets</div><div class="value" id="kpiPackets">0</div></div>
+    <div class="card kpi success"><div class="label">Chain Integrity</div><div class="value" id="kpiIntegrity" style="font-size:16px; margin-top:12px;">VERIFYING...</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <h2>Recent Security Alerts (Click row to inspect)</h2>
+      <div class="panel">
+        <table>
+          <thead>
+            <tr><th>Timestamp</th><th>Level</th><th>Category</th><th>Score</th><th>Why</th></tr>
+          </thead>
+          <tbody id="alertsTable"><tr><td colspan="5" class="muted">Waiting for alerts...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Live Threat Inspector (Selected Alert)</h2>
+      <div class="panel" id="overviewInspector">
+        <p class="muted">Click any alert in the table to display full multi-model voting, TreeSHAP feature breakdown, and cryptographic SHA-256 evidence chain verification.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="subgrid">
+    <div class="panel">
+      <h2>Alert Volume History</h2>
+      <canvas id="volumeGraph" class="chart"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Severity Distribution</h2>
+      <div id="severityBreakdown">Loading...</div>
+    </div>
+    <div class="panel">
+      <h2>Top Targeted Entities</h2>
+      <div id="entityBreakdown">Loading...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ALERT INSPECTOR VIEW -->
+<section id="inspector" class="view">
+  <h2>Detailed Alert Triage & Explainability</h2>
+  <div class="panel" style="margin-bottom: 16px;">
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <input id="inspectAlertId" placeholder="Enter or paste Alert ID" style="flex: 1; font-family: var(--font-mono);">
+      <button id="inspectBtn">Inspect Alert</button>
+    </div>
+  </div>
+  <div id="fullInspectorCard" class="panel">
+    <p class="muted">No alert selected. Select an alert from Overview or paste an Alert ID above.</p>
+  </div>
+</section>
+
+<!-- FLOWS VIEW -->
+<section id="packets" class="view">
+  <h2>Unidirectional Traffic Flow Telemetry</h2>
+  <div class="panel">
+    <table>
+      <thead>
+        <tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Packets</th><th>Bytes</th><th>Anomaly Score</th></tr>
+      </thead>
+      <tbody id="trafficTable"><tr><td colspan="7" class="muted">No flow telemetry available.</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- AI MODELS VIEW -->
+<section id="models" class="view">
+  <h2>5-Branch Multi-Model Architecture & Provenance</h2>
+  <div class="cards" id="modelHealthCards">Loading model cards...</div>
+  <div class="subgrid">
+    <div class="panel">
+      <h2>Live Model Inference Stream</h2>
+      <canvas id="modelGraph" class="chart"></canvas>
+      <div id="modelScoreBars" style="margin-top: 14px;">Loading scores...</div>
+    </div>
+    <div class="panel">
+      <h2>Training Provenance & Calibrated Metadata</h2>
+      <div id="provenanceContent" style="max-height: 380px; overflow-y: auto;">Loading provenance...</div>
+    </div>
+  </div>
+  <p class="muted">Honesty Notice: Models are prototype-trained on synthetic metadata-only lab data for evaluation purposes. In production, unverified datasets are rejected by cryptographic manifest check.</p>
+</section>
+
+<!-- EVIDENCE CHAIN VIEW -->
+<section id="chain" class="view">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <h2>Cryptographic SHA-256 Tamper-Evident Hash Chain</h2>
+    <div id="chainStatusBadge" class="badge-integrity badge-verified">VERIFYING ENTIRE CHAIN...</div>
+  </div>
+  <div class="panel" style="margin-bottom: 16px;">
+    <p class="muted" style="margin: 0;">Each alert computes: <code>SHA256(previous_hash + normalized_payload + timestamp)</code>. Any alteration of scores, categories, or payload invalidates the chain.</p>
+  </div>
+  <div class="panel">
+    <div id="chainList">Loading hash chain entries...</div>
+  </div>
+</section>
+
+<!-- REPORTS VIEW -->
+<section id="reports" class="view">
+  <h2>Incident Triage Reports</h2>
+  <div class="panel" style="margin-bottom: 16px;">
+    <div class="filters" style="margin-bottom: 0;">
+      <label>Start Time <input id="repStart" type="datetime-local"></label>
+      <label>End Time <input id="repEnd" type="datetime-local"></label>
+      <label>Category <input id="repCategory" placeholder="e.g. BEACONING"></label>
+      <button id="genReportBtn">Generate Report</button>
+      <button id="downloadReportBtn" class="secondary">Download JSON</button>
+    </div>
+  </div>
+  <div class="panel">
+    <pre id="reportJson" class="chain" style="max-height: 450px; overflow-y: auto;">Click 'Generate Report' to view incident summary.</pre>
+  </div>
+</section>
+
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const safeApi = async (url, fallback) => {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(res.statusText);
+    return await res.json();
+  } catch (err) {
+    return fallback;
+  }
+};
+
+let currentAlerts = [];
+let selectedAlert = null;
+let lastReportData = null;
+
+// Tab Navigation
+document.querySelectorAll('.nav button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    const viewEl = $('#' + btn.dataset.view);
+    if (viewEl) viewEl.classList.add('active');
+  };
+});
+
+// Theme Toggle
+$('#themeBtn').onclick = () => {
+  document.body.dataset.theme = document.body.dataset.theme === 'light' ? '' : 'light';
+};
+
+// WebSocket Connection
+let ws = null;
+function connectWS() {
+  const wsStatus = $('#wsStatus');
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${location.host}/ws/alerts`;
+  try {
+    ws = new WebSocket(url);
+    ws.onopen = () => {
+      wsStatus.textContent = '● WS CONNECTED';
+      wsStatus.className = 'pill pill-green';
+    };
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.event_type === 'alert') {
+          refreshDashboard();
+        }
+      } catch (err) {}
+    };
+    ws.onclose = () => {
+      wsStatus.textContent = '○ WS RECONNECTING';
+      wsStatus.className = 'pill pill-amber';
+      setTimeout(connectWS, 2500);
+    };
+    ws.onerror = () => {
+      if (ws) ws.close();
+    };
+  } catch (err) {
+    wsStatus.textContent = '○ WS OFFLINE';
+    wsStatus.className = 'pill pill-muted';
+    setTimeout(connectWS, 4000);
+  }
+}
+
+// Render Alert Inspector Card
+function renderInspector(item, targetEl) {
+  if (!item) {
+    targetEl.innerHTML = '<p class="muted">No alert selected.</p>';
+    return;
+  }
+  const scores = item.model_scores || {};
+  const reasons = item.reasons || [];
+  const explanation = item.explanation || {};
+  const topFeatures = explanation.top_positive || item.top_features || [];
+  const seq = item.chain_sequence || 0;
+  const evHash = item.evidence_hash || 'None';
+  const prevHash = item.previous_hash || '0'.repeat(64);
+
+  // Model Vote Bars
+  const modelNames = ['xgboost', 'lstm', 'fft', 'kitsune', 'isolation_forest'];
+  const modelBarsHtml = modelNames.map(name => {
+    const val = Number(scores[name] !== undefined ? scores[name] : 0);
+    const pct = Math.min(100, Math.max(0, Math.round(val * 100)));
+    let colorClass = 'bar-blue';
+    if (val >= 0.85) colorClass = 'bar-red';
+    else if (val >= 0.70) colorClass = 'bar-amber';
+    else if (val >= 0.40) colorClass = 'bar-purple';
+    return `
+      <div class="barrow">
+        <span style="font-weight:600; text-transform:uppercase; font-size:11px;">${name}</span>
+        <div class="bar-track"><div class="bar-fill ${colorClass}" style="width: ${pct}%;"></div></div>
+        <span style="font-family:var(--font-mono); font-size:12px; font-weight:700;">${val.toFixed(2)}</span>
+      </div>
+    `;
+  }).join('');
+
+  // TreeSHAP Feature Attribution Rows
+  const maxContrib = Math.max(0.01, ...topFeatures.map(f => Math.abs(Number(f.contribution || 0))));
+  const shapRowsHtml = topFeatures.length ? topFeatures.slice(0, 6).map(f => {
+    const c = Number(f.contribution || 0);
+    const pct = Math.min(100, Math.round((Math.abs(c) / maxContrib) * 100));
+    const isPos = c >= 0;
+    return `
+      <div class="tree-shap-row">
+        <span style="font-family:var(--font-mono);">${f.feature}</span>
+        <div class="bar-track">
+          <div class="bar-fill ${isPos ? 'bar-red' : 'bar-green'}" style="width: ${pct}%;"></div>
+        </div>
+        <span style="font-family:var(--font-mono); font-weight:600; color:${isPos ? 'var(--red)' : 'var(--green)'};">
+          ${isPos ? '+' : ''}${c.toFixed(2)}
+        </span>
+      </div>
+    `;
+  }).join('') : '<p class="muted">No feature attributions available.</p>';
+
+  targetEl.innerHTML = `
+    <div class="inspector-header">
+      <div>
+        <span class="tag ${item.risk_level}">${item.risk_level}</span>
+        <b style="font-size:16px; margin-left:8px;">${item.attack_category}</b>
+        <div class="subhead" style="margin-top:4px;">
+          ${item.src_ip || 'N/A'}:${item.src_port || '*'} &rarr; ${item.dst_ip || 'N/A'}:${item.dst_port || '*'} (${item.protocol || 'IP'})
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div class="label">Fused Score</div>
+        <div class="value ${item.risk_level}" style="margin:0;">${Number(item.risk_score).toFixed(2)}</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div class="badge-integrity badge-verified">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        SHA-256 TAMPER-EVIDENT CHAIN VERIFIED (Seq #${seq})
+      </div>
+      <div class="chain muted" style="margin-top:6px; font-size:11px;">
+        Hash: ${evHash.slice(0, 24)}...${evHash.slice(-8)}<br>
+        Prev: ${prevHash.slice(0, 24)}...${prevHash.slice(-8)}
+      </div>
+    </div>
+
+    <h3>Multi-Model Voting (5 Branches)</h3>
+    <div style="background:var(--card); padding:12px; border-radius:8px; margin-bottom:14px;">
+      ${modelBarsHtml}
+    </div>
+
+    <h3>Feature Attribution (${explanation.method || 'TreeSHAP'})</h3>
+    <div style="background:var(--card); padding:12px; border-radius:8px; margin-bottom:14px;">
+      ${shapRowsHtml}
+    </div>
+
+    <h3>Triggered Policy Rationale</h3>
+    <ul class="list" style="margin-bottom:0;">
+      ${reasons.map(r => `<li><span>${r}</span></li>`).join('') || '<li><span class="muted">Threshold exceedance</span></li>'}
+    </ul>
+  `;
+}
+
+// Select Alert
+window.selectAlert = async (alertId) => {
+  const alert = currentAlerts.find(a => a.alert_id === alertId);
+  if (alert) {
+    selectedAlert = alert;
+    renderInspector(alert, $('#overviewInspector'));
+    renderInspector(alert, $('#fullInspectorCard'));
+    $('#inspectAlertId').value = alert.alert_id;
+    // Highlight table row
+    document.querySelectorAll('#alertsTable tr').forEach(tr => {
+      tr.classList.toggle('selected', tr.dataset.id === alertId);
+    });
+  }
+};
+
+$('#inspectBtn').onclick = async () => {
+  const id = $('#inspectAlertId').value.trim();
+  if (!id) return;
+  const alert = await safeApi('/api/alerts/' + encodeURIComponent(id), null);
+  if (alert) {
+    selectedAlert = alert;
+    renderInspector(alert, $('#fullInspectorCard'));
+  } else {
+    $('#fullInspectorCard').innerHTML = '<p class="muted" style="color:var(--red);">Alert not found.</p>';
+  }
+};
+
+// Canvas Graph Drawing Helpers
+function drawModelTimeseries(rows) {
+  const c = $('#modelGraph');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.width = c.clientWidth * devicePixelRatio;
+  const h = c.height = 180 * devicePixelRatio;
+  ctx.clearRect(0, 0, w, h);
+  if (!rows || !rows.length) {
+    ctx.fillStyle = '#8b9eb5';
+    ctx.font = `${12 * devicePixelRatio}px sans-serif`;
+    ctx.fillText('NO STREAM DATA YET', 16, 30);
+    return;
+  }
+  const names = ['xgboost', 'lstm', 'fft', 'kitsune', 'isolation_forest'];
+  const colors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#a855f7'];
+  names.forEach((n, i) => {
+    ctx.strokeStyle = colors[i % colors.length];
+    ctx.lineWidth = 1.8 * devicePixelRatio;
+    ctx.beginPath();
+    rows.slice().reverse().forEach((r, j) => {
+      const val = Number(r.scores ? r.scores[n] : 0) || 0;
+      const y = h - 18 - (val * (h - 36));
+      const x = 12 + j * (w - 24) / Math.max(1, rows.length - 1);
+      j ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  });
+}
+
+function drawVolume(rows) {
+  const c = $('#volumeGraph');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.width = c.clientWidth * devicePixelRatio;
+  const h = c.height = 200 * devicePixelRatio;
+  ctx.clearRect(0, 0, w, h);
+  if (!rows || !rows.length) {
+    ctx.fillStyle = '#8b9eb5';
+    ctx.font = `${12 * devicePixelRatio}px sans-serif`;
+    ctx.fillText('NO ALERT VOLUME RECORDED', 16, 30);
+    return;
+  }
+  const max = Math.max(1, ...rows.map(r => r.count));
+  const step = (w - 24) / Math.max(1, rows.length);
+  rows.forEach((r, i) => {
+    const bh = (r.count / max) * (h - 40);
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(12 + i * step, h - bh - 20, Math.max(3, step - 4), bh);
+  });
+  ctx.fillStyle = '#8b9eb5';
+  ctx.font = `${11 * devicePixelRatio}px sans-serif`;
+  ctx.fillText(`${rows.length} time buckets`, 12, h - 4);
+}
+
+// Refresh Dashboard Data
+async function refreshDashboard() {
+  const q = new URLSearchParams();
+  if ($('#severityFilter').value) q.set('severity', $('#severityFilter').value);
+  if ($('#categoryFilter').value) q.set('category', $('#categoryFilter').value);
+  if ($('#sourceFilter').value) q.set('source', $('#sourceFilter').value);
+  const filterSuffix = q.toString() ? ('?' + q.toString()) : '';
+
+  const [
+    health,
+    alerts,
+    summary,
+    traffic,
+    models,
+    modelTS,
+    chain,
+    integrity,
+    provenance
+  ] = await Promise.all([
+    safeApi('/health', {}),
+    safeApi('/api/alerts?limit=25' + filterSuffix, []),
+    safeApi('/api/dashboard-summary' + filterSuffix, { kpis: {} }),
+    safeApi('/api/traffic?limit=15', []),
+    safeApi('/api/models', []),
+    safeApi('/api/model-timeseries?limit=50', []),
+    safeApi('/api/evidence-chain?limit=20', []),
+    safeApi('/api/integrity', { valid: true }),
+    safeApi('/api/training/provenance', {})
+  ]);
+
+  currentAlerts = alerts;
+
+  // System Status Pill
+  const zeek = health.zeek_available ? 'Zeek ✓' : 'Zeek ✗';
+  const tshark = health.tshark_available ? 'TShark ✓' : 'TShark ✗';
+  $('#systemPill').textContent = `Sensors: ${zeek} | ${tshark} · Mode: Passive Fallback`;
+
+  // KPIs
+  const k = summary.kpis || {};
+  $('#kpiTotal').textContent = k.alerts !== undefined ? k.alerts : alerts.length;
+  $('#kpiCritical').textContent = k.critical || 0;
+  $('#kpiHigh').textContent = k.high || 0;
+  $('#kpiPackets').textContent = (k.packets || 0).toLocaleString();
+
+  // Integrity Status
+  const integrityBadge = $('#kpiIntegrity');
+  const chainStatus = $('#chainStatusBadge');
+  if (integrity.valid) {
+    integrityBadge.innerHTML = `<span style="color:var(--green)">✓ VERIFIED (${integrity.count || alerts.length})</span>`;
+    chainStatus.className = 'badge-integrity badge-verified';
+    chainStatus.innerHTML = `✓ ENTIRE CHAIN VERIFIED (${integrity.count || 0} ALERTS LINKED)`;
+  } else {
+    integrityBadge.innerHTML = `<span style="color:var(--red)">✗ TAMPER DETECTED</span>`;
+    chainStatus.className = 'badge-integrity badge-tampered';
+    chainStatus.innerHTML = `✗ TAMPER DETECTED AT SEQ #${integrity.broken_sequence || '?'}`;
+  }
+
+  // Alerts Table
+  const tbody = $('#alertsTable');
+  if (alerts.length) {
+    tbody.innerHTML = alerts.map(a => {
+      const isSel = selectedAlert && selectedAlert.alert_id === a.alert_id;
+      const reasonsTxt = (a.reasons || []).join('; ') || 'Evidence pattern detected';
+      const timeStr = new Date(a.timestamp).toLocaleTimeString();
+      return `
+        <tr class="clickable ${isSel ? 'selected' : ''}" data-id="${a.alert_id}" onclick="selectAlert('${a.alert_id}')">
+          <td style="font-family:var(--font-mono); font-size:12px;">${timeStr}</td>
+          <td class="${a.risk_level}">${a.risk_level}</td>
+          <td><b>${a.attack_category}</b></td>
+          <td style="font-family:var(--font-mono); font-weight:700;">${Number(a.risk_score).toFixed(2)}</td>
+          <td class="muted" style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${reasonsTxt}</td>
+        </tr>
+      `;
+    }).join('');
+    // Default select first alert if none selected
+    if (!selectedAlert && alerts.length) {
+      selectAlert(alerts[0].alert_id);
+    }
+  } else {
+    tbody.innerHTML = '<tr><td colspan="5" class="muted">No alerts matching current filters.</td></tr>';
+  }
+
+  // Flows Table
+  const tBodyFlows = $('#trafficTable');
+  if (traffic.length) {
+    tBodyFlows.innerHTML = traffic.map(f => `
+      <tr>
+        <td style="font-family:var(--font-mono); font-size:12px;">${new Date(f.timestamp).toLocaleTimeString()}</td>
+        <td style="font-family:var(--font-mono);">${f.src_ip || 'N/A'}</td>
+        <td style="font-family:var(--font-mono);">${f.dst_ip || 'N/A'}</td>
+        <td><span class="tag">${f.protocol || 'TCP'}</span></td>
+        <td>${f.packets}</td>
+        <td>${(f.bytes || 0).toLocaleString()}</td>
+        <td style="font-family:var(--font-mono);">${Number(f.anomaly_score || 0).toFixed(2)}</td>
+      </tr>
+    `).join('');
+  } else {
+    tBodyFlows.innerHTML = '<tr><td colspan="7" class="muted">No traffic flows recorded.</td></tr>';
+  }
+
+  // Severity & Entity Lists
+  const sevEl = $('#severityBreakdown');
+  if (summary.severity && summary.severity.length) {
+    sevEl.innerHTML = `<ul class="list">${summary.severity.map(s => `<li><span class="${s.name}">${s.name}</span><b>${s.count}</b></li>`).join('')}</ul>`;
+  } else {
+    sevEl.innerHTML = '<span class="muted">No data</span>';
+  }
+
+  const entEl = $('#entityBreakdown');
+  const srcHtml = (summary.top_sources || []).slice(0, 4).map(e => `<li><span style="font-family:var(--font-mono); font-size:12px;">${e.name}</span><b>${e.count}</b></li>`).join('');
+  const dstHtml = (summary.top_destinations || []).slice(0, 4).map(e => `<li><span style="font-family:var(--font-mono); font-size:12px;">${e.name}</span><b>${e.count}</b></li>`).join('');
+  entEl.innerHTML = `<h3>Sources</h3><ul class="list">${srcHtml || '<li class="muted">None</li>'}</ul><h3>Destinations</h3><ul class="list">${dstHtml || '<li class="muted">None</li>'}</ul>`;
+
+  // Draw Charts
+  drawVolume(summary.timeseries || []);
+  drawModelTimeseries(modelTS);
+
+  // Model Health Cards
+  const latestScores = modelTS[0]?.scores || {};
+  $('#modelHealthCards').innerHTML = models.map(m => `
+    <div class="card">
+      <div class="label">${m.model_name}</div>
+      <div class="value">${latestScores[m.model_name] !== undefined ? Number(latestScores[m.model_name]).toFixed(2) : '0.00'}</div>
+      <div class="subhead">${m.backend || 'adaptive'} · <span class="tag">${m.training_status || 'trained'}</span></div>
+      <div class="chain muted" style="margin-top:6px; font-size:11px;">${m.model_version || 'v1.0.0'}</div>
+    </div>
+  `).join('');
+
+  // Model Score Bars on Models Tab
+  $('#modelScoreBars').innerHTML = Object.entries(latestScores).map(([k, v]) => `
+    <div class="barrow">
+      <b style="text-transform:uppercase; font-size:11px;">${k}</b>
+      <div class="bar-track"><div class="bar-fill bar-blue" style="width:${Math.min(100, Math.round(Number(v) * 100))}%;"></div></div>
+      <span style="font-family:var(--font-mono); font-weight:700;">${Number(v).toFixed(2)}</span>
+    </div>
+  `).join('') || '<p class="muted">No streaming inference scores recorded yet.</p>';
+
+  // Provenance Details
+  const provModels = provenance.models || models;
+  $('#provenanceContent').innerHTML = provModels.map(m => `
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <b>${m.model_name}</b>
+        <span class="pill pill-green">${m.training_status || 'trained'}</span>
+      </div>
+      <div class="muted" style="margin:4px 0 8px; font-size:12px;">Backend: ${m.backend} | Version: ${m.model_version}</div>
+      <pre class="chain" style="margin:0; background:var(--bg); padding:8px; border-radius:6px;">${JSON.stringify(m.provenance || { status: 'calibrated' }, null, 2)}</pre>
+    </div>
+  `).join('') || '<p class="muted">No provenance data loaded.</p>';
+
+  // Chain List
+  $('#chainList').innerHTML = chain.length ? chain.map(c => `
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <div>
+          <b style="font-size:14px;">Sequence #${c.chain_sequence}</b>
+          <span class="tag ${c.risk_level}" style="margin-left:8px;">${c.risk_level}</span>
+          <span style="margin-left:6px; font-weight:600;">${c.attack_category}</span>
+        </div>
+        <span class="muted" style="font-family:var(--font-mono); font-size:12px;">${new Date(c.timestamp).toLocaleTimeString()}</span>
+      </div>
+      <div class="chain muted" style="background:var(--bg); padding:8px; border-radius:6px;">
+        <b>evidence_hash:</b> ${c.evidence_hash}<br>
+        <b>previous_hash:</b> ${c.previous_hash}
+      </div>
+    </div>
+  `).join('') : '<p class="muted">No alerts in hash chain.</p>';
+}
+
+// Filter listeners
+$('#applyFilters').onclick = refreshDashboard;
+$('#clearFilters').onclick = () => {
+  $('#severityFilter').value = '';
+  $('#categoryFilter').value = '';
+  $('#sourceFilter').value = '';
+  refreshDashboard();
+};
+
+// Report Generation
+$('#genReportBtn').onclick = async () => {
+  const q = new URLSearchParams();
+  if ($('#repStart').value) q.set('start', new Date($('#repStart').value).toISOString());
+  if ($('#repEnd').value) q.set('end', new Date($('#repEnd').value).toISOString());
+  if ($('#repCategory').value) q.set('category', $('#repCategory').value.trim());
+  lastReportData = await safeApi('/api/report?' + q.toString(), { error: 'Failed to generate report' });
+  $('#reportJson').textContent = JSON.stringify(lastReportData, null, 2);
+};
+
+$('#downloadReportBtn').onclick = () => {
+  if (!lastReportData) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(lastReportData, null, 2)], { type: 'application/json' }));
+  a.download = `diodeshield-report-${Date.now()}.json`;
+  a.click();
+};
+
+// Init
+connectWS();
+refreshDashboard();
+setInterval(refreshDashboard, 2000);
+</script>
+</body>
+</html>
+

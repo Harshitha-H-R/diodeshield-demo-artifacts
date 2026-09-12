@@ -73,6 +73,8 @@ class Repository:
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(alerts)")}
         if "explanation" not in columns:
             self._conn.execute("ALTER TABLE alerts ADD COLUMN explanation TEXT")
+        if "reasons" not in columns:
+            self._conn.execute("ALTER TABLE alerts ADD COLUMN reasons TEXT")
         self._conn.commit()
 
     def close(self) -> None:
@@ -95,7 +97,7 @@ class Repository:
             "baseline_deviation", "feature_values", "top_features", "threat_intel",
             "vulnerability_context", "gateway_context", "diode_health", "model_version",
             "feature_schema_version", "configuration_version", "sensor_version", "evidence_hash",
-            "previous_hash", "chain_sequence", "incident_id", "explanation",
+            "previous_hash", "chain_sequence", "incident_id", "explanation", "reasons",
         ]
         vals = tuple(json.dumps(alert.get(c), default=str) if isinstance(alert.get(c), (dict, list)) else alert.get(c) for c in columns)
         self._write(
@@ -110,7 +112,7 @@ class Repository:
         for row in rows:
             for key in ("model_scores", "protocol_evidence", "feature_values", "top_features",
                         "threat_intel", "vulnerability_context", "gateway_context", "diode_health",
-                        "explanation"):
+                        "explanation", "reasons"):
                 if isinstance(row.get(key), str):
                     try:
                         row[key] = json.loads(row[key])
@@ -281,6 +283,21 @@ class Repository:
                 row["scores"] = {}
         return rows
 
+    def verify_integrity(self) -> dict[str, Any]:
+        from diodeshield.integrity import verify_chain
+        rows = self._rows("SELECT * FROM alerts WHERE evidence_hash IS NOT NULL ORDER BY chain_sequence ASC")
+        for row in rows:
+            for key in ("model_scores", "protocol_evidence", "feature_values", "top_features",
+                        "threat_intel", "vulnerability_context", "gateway_context", "diode_health",
+                        "explanation", "reasons"):
+                if isinstance(row.get(key), str):
+                    try:
+                        row[key] = json.loads(row[key])
+                    except json.JSONDecodeError:
+                        pass
+        return verify_chain(rows)
+
     def health(self) -> dict[str, Any]:
         self._conn.execute("SELECT 1").fetchone()
         return {"database": "healthy", "path": str(self.path)}
+
