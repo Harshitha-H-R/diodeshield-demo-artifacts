@@ -24,29 +24,59 @@ config = load_config()
 repository = Repository()
 pipeline = DetectionPipeline(repository, config)
 event_queues: set[asyncio.Queue[dict[str, Any]]] = set()
+main_loop: asyncio.AbstractEventLoop | None = None
 
 
 def publish(alert: dict[str, Any]) -> None:
+    payload = {"event_type": "alert", **alert}
     for queue in list(event_queues):
-        try:
-            queue.put_nowait({"event_type": "alert", **alert})
-        except asyncio.QueueFull:
-            pass
+        if main_loop and main_loop.is_running():
+            try:
+                main_loop.call_soon_threadsafe(queue.put_nowait, payload)
+            except Exception:
+                pass
+        else:
+            try:
+                queue.put_nowait(payload)
+            except Exception:
+                pass
 
 
 pipeline.subscribe(publish)
 live_capture: LiveCaptureWorker | None = None
 
 
+async def _watch_db_alerts() -> None:
+    last_known_seq = 0
+    while True:
+        try:
+            await asyncio.sleep(1.0)
+            rows = repository.alerts(1)
+            if rows:
+                seq = int(rows[0].get("chain_sequence") or 0)
+                if last_known_seq == 0:
+                    last_known_seq = seq
+                elif seq > last_known_seq:
+                    last_known_seq = seq
+                    publish(rows[0])
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    global live_capture
+    global live_capture, main_loop
+    main_loop = asyncio.get_running_loop()
+    db_watcher = asyncio.create_task(_watch_db_alerts())
     if config.get("system", {}).get("live_capture"):
         interface = os.getenv("DIODESHIELD_INTERFACE", "auto")
         live_capture = LiveCaptureWorker(pipeline, interface,
                                          os.getenv("DIODESHIELD_TSHARK", "tshark"))
         live_capture.start()
     yield
+    db_watcher.cancel()
     if live_capture:
         live_capture.stop()
 
@@ -94,11 +124,18 @@ def detailed_health() -> dict[str, Any]:
 def capture_status() -> dict[str, Any]:
     enabled = bool(config.get("system", {}).get("live_capture"))
     worker = live_capture
-    return {"enabled": enabled, "running": bool(worker and worker.process and worker.process.poll() is None),
-            "interface": getattr(worker, "interface", None),
-            "tshark": getattr(worker, "command", os.getenv("DIODESHIELD_TSHARK", "tshark")),
-            "visibility": pipeline.latest_health.get("visibility"),
-            "error": pipeline.latest_health.get("capture_error")}
+    running = bool(worker and ((worker.process and worker.process.poll() is None) or (worker.thread and worker.thread.is_alive())))
+    return {
+        "enabled": enabled,
+        "running": running,
+        "interface": getattr(worker, "interface", None),
+        "mode": pipeline.latest_health.get("mode", "tshark" if worker and worker.process else "native_loopback_stream"),
+        "tshark": getattr(worker, "command", os.getenv("DIODESHIELD_TSHARK", "tshark")),
+        "visibility": pipeline.latest_health.get("visibility", "unknown"),
+        "packets_captured": pipeline.latest_health.get("packets_captured", 0),
+        "last_capture_time": pipeline.latest_health.get("last_capture_time"),
+        "error": pipeline.latest_health.get("capture_error"),
+    }
 
 
 @app.get("/api/alerts")
@@ -305,6 +342,86 @@ def block_alert_ip(alert_id: str, request: BlockRequest) -> dict[str, Any]:
     return result
 
 
+@app.post("/api/simulator/inject")
+def inject_threat(payload: dict[str, Any]) -> dict[str, Any]:
+    from datetime import timedelta
+    scenario = str(payload.get("scenario", "flood")).lower()
+    count = int(payload.get("count", 250))
+    count = max(1, min(count, 5000))
+    start = datetime.now(timezone.utc)
+    batch: list[TrafficEvent] = []
+
+    for i in range(count):
+        if scenario == "spoof":
+            ttl, protocol, length, port = 64, "UDP", 256, 19001
+            source = f"198.18.0.{(i % 32) + 1}"
+            dest = "10.0.0.8"
+            meta = {"virtual_identity": True}
+        elif scenario == "altered":
+            ttl, source, protocol, length, port = 64, "10.0.0.7", "TCP", 180, 502
+            dest = "10.0.0.8"
+            meta = {"payload_altered": True}
+        elif scenario == "beacon":
+            ttl, source, protocol, length, port = 64, "10.0.0.7", "TCP", 64, 4444
+            dest = "198.18.0.50"
+            meta = {"beacon": True}
+        elif scenario == "recon":
+            ttl, source, protocol, length = 64, "10.0.0.7", "TCP", 64
+            dest = f"10.0.1.{(i % 16) + 1}"
+            port = 502 + (i % 8)
+            meta = {"scan": True}
+        elif scenario == "normal":
+            ttl, source, protocol, length, port = 64, "10.0.0.7", "TCP", 128, 502
+            dest = "10.0.0.8"
+            meta = {"stream": "normal_polling"}
+        else:  # flood
+            ttl, source, protocol, length, port = 64, "10.0.0.7", "UDP", 1200, 19001
+            dest = "10.0.0.8"
+            meta = {"flood": True}
+
+        batch.append(
+            TrafficEvent(
+                timestamp=start + timedelta(milliseconds=i * 2),
+                src_ip=source,
+                dst_ip=dest,
+                src_port=40000 + (i % 50),
+                dst_port=port,
+                protocol=protocol,
+                packet_len=length,
+                ttl=ttl,
+                data_source=f"simulator_{scenario}",
+                metadata=meta,
+            )
+        )
+
+    alerts = []
+    result = pipeline.process_window(batch)
+    if result:
+        alerts.append(result)
+        publish(result)
+    return {
+        "status": "injected",
+        "scenario": scenario,
+        "packets": count,
+        "alerts_generated": len(alerts),
+        "latest_alert": alerts[0] if alerts else None,
+    }
+
+
+@app.post("/api/simulator/toggle_capture")
+def toggle_capture() -> dict[str, Any]:
+    global live_capture
+    if live_capture and live_capture.thread and live_capture.thread.is_alive():
+        live_capture.stop()
+        running = False
+    else:
+        interface = os.getenv("DIODESHIELD_INTERFACE", "auto")
+        live_capture = LiveCaptureWorker(pipeline, interface, os.getenv("DIODESHIELD_TSHARK", "tshark"))
+        live_capture.start()
+        running = True
+    return {"status": "ok", "running": running}
+
+
 async def stream(queue: asyncio.Queue[dict[str, Any]], websocket: WebSocket) -> None:
     while True:
         await websocket.send_text(json.dumps(await queue.get(), default=str))
@@ -318,13 +435,16 @@ async def websocket_channel(websocket: WebSocket, channel: str) -> None:
     try:
         await websocket.send_json({"event_type": "connected", "channel": channel})
         while True:
-            await websocket.send_json({"event_type": "heartbeat", "channel": channel, "health": pipeline.latest_health})
             try:
-                item = await asyncio.wait_for(queue.get(), timeout=5)
+                item = await asyncio.wait_for(queue.get(), timeout=3.0)
                 await websocket.send_json(item)
             except asyncio.TimeoutError:
-                pass
-    except (WebSocketDisconnect, RuntimeError):
+                await websocket.send_json({
+                    "event_type": "heartbeat",
+                    "channel": channel,
+                    "health": pipeline.latest_health,
+                })
+    except Exception:
         pass
     finally:
         event_queues.discard(queue)

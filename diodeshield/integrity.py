@@ -90,11 +90,15 @@ def verify_chain(alerts: list[dict[str, Any]]) -> dict[str, Any]:
 
 class HashChain:
     def __init__(self, repository: Any = None) -> None:
+        self.repository = repository
         self.previous = "0" * 64
         self.sequence = 0
-        if repository is not None:
+        self._sync()
+
+    def _sync(self) -> None:
+        if self.repository is not None:
             try:
-                rows = repository._rows(
+                rows = self.repository._rows(
                     "SELECT chain_sequence, evidence_hash FROM alerts WHERE evidence_hash IS NOT NULL ORDER BY chain_sequence DESC LIMIT 1"
                 )
                 if rows:
@@ -103,8 +107,8 @@ class HashChain:
             except Exception:
                 pass
 
-
     def append(self, alert: dict[str, Any]) -> dict[str, Any]:
+        self._sync()
         self.sequence += 1
         previous = self.previous
         digest = compute_alert_hash(alert, previous_hash=previous)

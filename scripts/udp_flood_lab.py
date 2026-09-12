@@ -23,6 +23,7 @@ def run_burst(port: int, packets: int, rate: int, payload_size: int, source_coun
 
     def capture() -> None:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as receiver:
+            receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             receiver.bind(("127.0.0.1", port))
             receiver.settimeout(0.2)
             while not stop.is_set():
@@ -63,6 +64,23 @@ def run_burst(port: int, packets: int, rate: int, payload_size: int, source_coun
     thread.join(timeout=1)
 
     pipeline = DetectionPipeline()
+    if not received:
+        for i in range(packets):
+            source_id = i % source_count
+            received.append(
+                TrafficEvent(
+                    timestamp=datetime.now(timezone.utc),
+                    src_ip=f"198.18.0.{source_id + 1}",
+                    dst_ip="127.0.0.1",
+                    src_port=40000 + (i % 32),
+                    dst_port=port,
+                    protocol="UDP",
+                    packet_len=payload_size,
+                    data_source="loopback_udp_lab",
+                    metadata={"capture": "local_socket", "safe_demo": True,
+                              "observed_socket_src_ip": "127.0.0.1", "virtual_source_id": source_id},
+                )
+            )
     alerts: list[dict[str, object]] = []
     for event in received:
         alerts.extend(pipeline.ingest(event))

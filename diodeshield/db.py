@@ -65,8 +65,11 @@ class Repository:
         self.path = Path(path or os.getenv("DIODESHIELD_DB", "data/diodeshield.db"))
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._conn = sqlite3.connect(self.path, check_same_thread=False)
+        self._conn = sqlite3.connect(self.path, check_same_thread=False, timeout=30.0)
         self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode = WAL")
+        self._conn.execute("PRAGMA busy_timeout = 30000")
+        self._conn.execute("PRAGMA synchronous = NORMAL")
         self._conn.executescript(SCHEMA)
         # Keep existing prototype databases usable when a new evidence field is
         # introduced; SQLite's CREATE TABLE IF NOT EXISTS does not migrate it.

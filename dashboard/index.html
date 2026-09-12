@@ -176,6 +176,26 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
 
 <!-- OVERVIEW VIEW -->
 <section id="overview" class="view active">
+  <!-- LIVE CAPTURE & THREAT INJECTION CONTROL PANEL -->
+  <div class="panel" style="margin-bottom: 16px; border-left: 4px solid var(--blue); background: var(--panel);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span id="captureLivePill" class="pill pill-green" style="font-size: 12px; font-weight: 700;">● LIVE CAPTURE ACTIVE</span>
+        <span class="muted" style="font-size: 12px;">Mode: <b id="captureModeTxt" style="color:var(--text);">Native Stream & Socket</b></span>
+        <span class="muted" style="font-size: 12px;">Diode Ingest: <b id="capturePacketsTxt" style="color:var(--blue-light);">0 pkts</b></span>
+        <button id="toggleCaptureBtn" class="secondary" style="padding: 4px 10px; font-size: 12px;">Toggle Capture</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span class="muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: .05em;">One-Click Threat Injection:</span>
+        <button class="inject-btn" data-scenario="flood" style="background:#dc2626; padding: 6px 12px; font-size: 12px;">⚡ UDP Flood</button>
+        <button class="inject-btn" data-scenario="spoof" style="background:#ea580c; padding: 6px 12px; font-size: 12px;">⚡ IP Spoof</button>
+        <button class="inject-btn" data-scenario="altered" style="background:#9333ea; padding: 6px 12px; font-size: 12px;">⚡ Alteration</button>
+        <button class="inject-btn" data-scenario="beacon" style="background:#b45309; padding: 6px 12px; font-size: 12px;">⚡ C2 Beacon</button>
+        <button class="inject-btn" data-scenario="recon" style="background:#2563eb; padding: 6px 12px; font-size: 12px;">⚡ OT Recon</button>
+      </div>
+    </div>
+  </div>
+
   <div class="filters">
     <label>Severity
       <select id="severityFilter">
@@ -215,7 +235,12 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
       </div>
     </div>
     <div>
-      <h2>Live Threat Inspector (Selected Alert)</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 12px;">
+        <h2 style="margin:0;">Live Threat Inspector</h2>
+        <label style="font-size:12px; font-weight:normal; display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:var(--muted);">
+          <input type="checkbox" id="autoTrackLatest" checked> Auto-Track Latest
+        </label>
+      </div>
       <div class="panel" id="overviewInspector">
         <p class="muted">Click any alert in the table to display full multi-model voting, TreeSHAP feature breakdown, and cryptographic SHA-256 evidence chain verification.</p>
       </div>
@@ -478,14 +503,20 @@ function renderInspector(item, targetEl) {
 }
 
 // Select Alert
-window.selectAlert = async (alertId) => {
-  const alert = currentAlerts.find(a => a.alert_id === alertId);
+window.selectAlert = async (alertId, fromUserClick = false) => {
+  if (fromUserClick && $('#autoTrackLatest')) {
+    $('#autoTrackLatest').checked = false;
+  }
+  let alert = currentAlerts.find(a => a.alert_id === alertId);
+  const val = await safeApi('/api/alerts/' + encodeURIComponent(alertId) + '/validation', null);
+  if (val && val.alert) {
+    alert = { ...alert, ...val.alert, validation: val };
+  }
   if (alert) {
     selectedAlert = alert;
     renderInspector(alert, $('#overviewInspector'));
     renderInspector(alert, $('#fullInspectorCard'));
     $('#inspectAlertId').value = alert.alert_id;
-    // Highlight table row
     document.querySelectorAll('#alertsTable tr').forEach(tr => {
       tr.classList.toggle('selected', tr.dataset.id === alertId);
     });
@@ -503,6 +534,40 @@ $('#inspectBtn').onclick = async () => {
     $('#fullInspectorCard').innerHTML = '<p class="muted" style="color:var(--red);">Alert not found.</p>';
   }
 };
+
+// Threat Injection Event Handlers
+document.querySelectorAll('.inject-btn').forEach(btn => {
+  btn.onclick = async () => {
+    const scenario = btn.dataset.scenario;
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Injecting...';
+    try {
+      const res = await fetch('/api/simulator/inject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: scenario, count: 200 })
+      });
+      const data = await res.json();
+      if (data.latest_alert) {
+        selectedAlert = data.latest_alert;
+      }
+      await refreshDashboard();
+    } catch (err) {
+      console.error('Injection error:', err);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  };
+});
+
+if ($('#toggleCaptureBtn')) {
+  $('#toggleCaptureBtn').onclick = async () => {
+    await fetch('/api/simulator/toggle_capture', { method: 'POST' });
+    await refreshDashboard();
+  };
+}
 
 // Canvas Graph Drawing Helpers
 function drawModelTimeseries(rows) {
@@ -559,16 +624,24 @@ function drawVolume(rows) {
   ctx.fillText(`${rows.length} time buckets`, 12, h - 4);
 }
 
+let lastIntegrityCheck = { valid: true, count: 0 };
+let refreshCount = 0;
+
 // Refresh Dashboard Data
 async function refreshDashboard() {
+  refreshCount++;
   const q = new URLSearchParams();
   if ($('#severityFilter').value) q.set('severity', $('#severityFilter').value);
   if ($('#categoryFilter').value) q.set('category', $('#categoryFilter').value);
   if ($('#sourceFilter').value) q.set('source', $('#sourceFilter').value);
   const filterSuffix = q.toString() ? ('?' + q.toString()) : '';
 
+  const checkIntegrityNow = (refreshCount % 5 === 1);
+  const integrityPromise = checkIntegrityNow ? safeApi('/api/integrity', lastIntegrityCheck) : Promise.resolve(lastIntegrityCheck);
+
   const [
     health,
+    capture,
     alerts,
     summary,
     traffic,
@@ -579,29 +652,51 @@ async function refreshDashboard() {
     provenance
   ] = await Promise.all([
     safeApi('/health', {}),
+    safeApi('/api/capture-status', {}),
     safeApi('/api/alerts?limit=25' + filterSuffix, []),
     safeApi('/api/dashboard-summary' + filterSuffix, { kpis: {} }),
     safeApi('/api/traffic?limit=15', []),
     safeApi('/api/models', []),
     safeApi('/api/model-timeseries?limit=50', []),
     safeApi('/api/evidence-chain?limit=20', []),
-    safeApi('/api/integrity', { valid: true }),
+    integrityPromise,
     safeApi('/api/training/provenance', {})
   ]);
 
+  if (checkIntegrityNow) lastIntegrityCheck = integrity;
   currentAlerts = alerts;
+
+  // Live Capture Control Bar UI
+  if (capture.running) {
+    if ($('#captureLivePill')) {
+      $('#captureLivePill').className = 'pill pill-green';
+      $('#captureLivePill').textContent = '● LIVE CAPTURE ACTIVE';
+    }
+  } else {
+    if ($('#captureLivePill')) {
+      $('#captureLivePill').className = 'pill pill-amber';
+      $('#captureLivePill').textContent = '○ CAPTURE PAUSED';
+    }
+  }
+  if ($('#captureModeTxt')) {
+    $('#captureModeTxt').textContent = capture.mode || 'Passive Stream & Loopback';
+  }
+  const totalPkts = Math.max(Number(capture.packets_captured || 0), Number(summary.kpis?.packets || 0));
+  if ($('#capturePacketsTxt')) {
+    $('#capturePacketsTxt').textContent = totalPkts.toLocaleString() + ' pkts';
+  }
 
   // System Status Pill
   const zeek = health.zeek_available ? 'Zeek ✓' : 'Zeek ✗';
   const tshark = health.tshark_available ? 'TShark ✓' : 'TShark ✗';
-  $('#systemPill').textContent = `Sensors: ${zeek} | ${tshark} · Mode: Passive Fallback`;
+  $('#systemPill').textContent = `Sensors: ${zeek} | ${tshark} · Native Live Stream Active`;
 
   // KPIs
   const k = summary.kpis || {};
   $('#kpiTotal').textContent = k.alerts !== undefined ? k.alerts : alerts.length;
   $('#kpiCritical').textContent = k.critical || 0;
   $('#kpiHigh').textContent = k.high || 0;
-  $('#kpiPackets').textContent = (k.packets || 0).toLocaleString();
+  $('#kpiPackets').textContent = totalPkts.toLocaleString();
 
   // Integrity Status
   const integrityBadge = $('#kpiIntegrity');
@@ -624,7 +719,7 @@ async function refreshDashboard() {
       const reasonsTxt = (a.reasons || []).join('; ') || 'Evidence pattern detected';
       const timeStr = new Date(a.timestamp).toLocaleTimeString();
       return `
-        <tr class="clickable ${isSel ? 'selected' : ''}" data-id="${a.alert_id}" onclick="selectAlert('${a.alert_id}')">
+        <tr class="clickable ${isSel ? 'selected' : ''}" data-id="${a.alert_id}" onclick="selectAlert('${a.alert_id}', true)">
           <td style="font-family:var(--font-mono); font-size:12px;">${timeStr}</td>
           <td class="${a.risk_level}">${a.risk_level}</td>
           <td><b>${a.attack_category}</b></td>
@@ -633,15 +728,16 @@ async function refreshDashboard() {
         </tr>
       `;
     }).join('');
-    // Default select first alert if none selected
-    if (!selectedAlert && alerts.length) {
-      selectAlert(alerts[0].alert_id);
+
+    const autoTrack = $('#autoTrackLatest')?.checked ?? true;
+    if (autoTrack || !selectedAlert || !alerts.some(a => a.alert_id === selectedAlert.alert_id)) {
+      selectAlert(alerts[0].alert_id, false);
     }
   } else {
     tbody.innerHTML = '<tr><td colspan="5" class="muted">No alerts matching current filters.</td></tr>';
   }
 
-  // Flows Table
+  // Flows Table (Includes real laptop IP connections)
   const tBodyFlows = $('#trafficTable');
   if (traffic.length) {
     tBodyFlows.innerHTML = traffic.map(f => `
