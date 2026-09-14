@@ -136,10 +136,22 @@ class LSTMAdapter(ModelAdapter):
                 import torch
 
                 from training.train_lstm import LSTMTemporalNet
-                net = LSTMTemporalNet()
+                json_path = pt_path.with_suffix(".json")
+                feature_columns = None
+                input_dim = 43
+                if json_path.exists():
+                    try:
+                        meta = json.loads(json_path.read_text(encoding="utf-8"))
+                        feature_columns = meta.get("feature_columns")
+                        if feature_columns:
+                            input_dim = len(feature_columns)
+                    except Exception:
+                        pass
+                net = LSTMTemporalNet(input_dim=input_dim)
                 net.load_state_dict(torch.load(str(pt_path), map_location="cpu", weights_only=True))
                 net.eval()
                 self.model = net
+                self.feature_columns = feature_columns
                 self.backend = "pytorch"
                 self.training_status = "trained"
                 self.version = "lstm-pytorch-1.0.0"
@@ -156,7 +168,9 @@ class LSTMAdapter(ModelAdapter):
         if self.model is not None:
             try:
                 import torch
-                names = sorted(key for key, value in f.items() if isinstance(value, (float, int)))
+                names = getattr(self, "feature_columns", None)
+                if not names:
+                    names = sorted(key for key, value in f.items() if isinstance(value, (float, int)))
                 vector = np.asarray([[float(f.get(name, 0.0)) for name in names]], dtype=float)
                 t = torch.from_numpy(vector).float()
                 with torch.no_grad():

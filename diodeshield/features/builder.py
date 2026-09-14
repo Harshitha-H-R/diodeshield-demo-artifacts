@@ -164,6 +164,32 @@ def extract_features(events: list[TrafficEvent], baseline: dict[str, float] | No
         + 0.10 * _norm_feature(values.get("periodicity_score", 0), 10.0)
         + 0.15 * float(values.get("beacon_score", 0)),
     ))
+
+    # Embedded/IoT network dataset feature aliases
+    values["packet_size"] = float(values.get("packet_len_mean", 0.0))
+    values["inter_arrival_time"] = float(values.get("iat_mean", 0.0))
+    values["packet_count_5s"] = float(values.get("packets", 0.0))
+    values["mean_packet_size"] = float(values.get("packet_len_mean", 0.0))
+    values["spectral_entropy"] = float(values.get("spectral_flatness", 0.0))
+    values["frequency_band_energy"] = float(values.get("harmonic_ratio", 0.0))
+    proto = str(values.get("protocol", "")).upper()
+    values["protocol_type_TCP"] = 1.0 if proto == "TCP" else 0.0
+    values["protocol_type_UDP"] = 1.0 if proto == "UDP" else 0.0
+    src_ports = [event.src_port for event in ordered if event.src_port is not None]
+    values["src_port"] = float(src_ports[0]) if src_ports else 0.0
+    values["dst_port"] = float(ports[0]) if ports else 0.0
+    for ip in ("192.168.1.2", "192.168.1.3"):
+        values[f"src_ip_{ip}"] = 1.0 if any(e.src_ip == ip for e in ordered) else 0.0
+    for ip in ("192.168.1.5", "192.168.1.6"):
+        values[f"dst_ip_{ip}"] = 1.0 if any(e.dst_ip == ip for e in ordered) else 0.0
+    flags_seen = set()
+    for e in ordered:
+        if e.tcp_flags:
+            flags_seen.update(str(e.tcp_flags).upper().split(","))
+    values["tcp_flags_FIN"] = 1.0 if "FIN" in flags_seen else 0.0
+    values["tcp_flags_SYN"] = 1.0 if "SYN" in flags_seen and "ACK" not in flags_seen else 0.0
+    values["tcp_flags_SYN-ACK"] = 1.0 if ("SYN" in flags_seen and "ACK" in flags_seen) or "SYN-ACK" in flags_seen else 0.0
+
     return values
 
 
