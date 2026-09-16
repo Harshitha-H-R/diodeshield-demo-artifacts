@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS alerts (
  gateway_context TEXT, diode_health TEXT, model_version TEXT,
  feature_schema_version TEXT, configuration_version TEXT, sensor_version TEXT,
  evidence_hash TEXT, previous_hash TEXT, chain_sequence INTEGER, incident_id TEXT,
- explanation TEXT
+ explanation TEXT, reasons TEXT, detection_method TEXT, recommended_action TEXT
 );
 CREATE TABLE IF NOT EXISTS alert_evidence (alert_id TEXT PRIMARY KEY, evidence TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS assets (
@@ -52,11 +52,19 @@ CREATE TABLE IF NOT EXISTS threat_intel (indicator TEXT PRIMARY KEY, data TEXT);
 CREATE TABLE IF NOT EXISTS vulnerabilities (asset_id TEXT PRIMARY KEY, data TEXT);
 CREATE TABLE IF NOT EXISTS diode_health (timestamp TEXT PRIMARY KEY, data TEXT);
 CREATE TABLE IF NOT EXISTS system_metrics (timestamp TEXT PRIMARY KEY, data TEXT);
+CREATE TABLE IF NOT EXISTS security_incidents (
+ incident_id TEXT PRIMARY KEY, src_ip TEXT, dst_ip TEXT, first_seen TEXT, last_seen TEXT,
+ category TEXT, severity TEXT, confidence REAL, event_count INTEGER, evidence TEXT
+);
+CREATE TABLE IF NOT EXISTS threat_intel_cache (
+ ip TEXT PRIMARY KEY, is_malicious INTEGER, score REAL, source TEXT, attribution TEXT, cached_at TEXT, expires_at REAL
+);
 CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, event TEXT, data TEXT);
 CREATE INDEX IF NOT EXISTS idx_alert_time ON alerts(timestamp);
 CREATE INDEX IF NOT EXISTS idx_alert_asset ON alerts(asset_id);
 CREATE INDEX IF NOT EXISTS idx_alert_level ON alerts(risk_level);
 CREATE INDEX IF NOT EXISTS idx_flow_time ON flows(timestamp);
+CREATE INDEX IF NOT EXISTS idx_inc_time ON security_incidents(last_seen);
 """
 
 
@@ -78,6 +86,10 @@ class Repository:
             self._conn.execute("ALTER TABLE alerts ADD COLUMN explanation TEXT")
         if "reasons" not in columns:
             self._conn.execute("ALTER TABLE alerts ADD COLUMN reasons TEXT")
+        if "detection_method" not in columns:
+            self._conn.execute("ALTER TABLE alerts ADD COLUMN detection_method TEXT")
+        if "recommended_action" not in columns:
+            self._conn.execute("ALTER TABLE alerts ADD COLUMN recommended_action TEXT")
         self._conn.commit()
 
     def close(self) -> None:
@@ -101,6 +113,7 @@ class Repository:
             "vulnerability_context", "gateway_context", "diode_health", "model_version",
             "feature_schema_version", "configuration_version", "sensor_version", "evidence_hash",
             "previous_hash", "chain_sequence", "incident_id", "explanation", "reasons",
+            "detection_method", "recommended_action",
         ]
         vals = tuple(json.dumps(alert.get(c), default=str) if isinstance(alert.get(c), (dict, list)) else alert.get(c) for c in columns)
         self._write(
@@ -155,6 +168,35 @@ class Repository:
     def audit(self, event: str, data: dict[str, Any]) -> None:
         self._write("INSERT INTO audit_log(timestamp,event,data) VALUES(?,?,?)",
                     (datetime.now(timezone.utc).isoformat(), event, json.dumps(data, default=str)))
+
+    def save_incident(self, inc: dict[str, Any]) -> None:
+        self._write(
+            "INSERT OR REPLACE INTO security_incidents(incident_id,src_ip,dst_ip,first_seen,last_seen,category,severity,confidence,event_count,evidence) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (
+                inc.get("incident_id"), inc.get("src_ip"), inc.get("dst_ip"),
+                inc.get("first_seen"), inc.get("last_seen"), inc.get("primary_category") or inc.get("category"),
+                inc.get("max_severity") or inc.get("severity"), inc.get("confidence", 0.0),
+                inc.get("event_count", 1), json.dumps(inc.get("evidence", []))
+            )
+        )
+
+    def incidents(self, limit: int = 50) -> list[dict[str, Any]]:
+        rows = self._rows("SELECT * FROM security_incidents ORDER BY last_seen DESC LIMIT ?", (max(1, min(limit, 500)),))
+        for r in rows:
+            if isinstance(r.get("evidence"), str):
+                try:
+                    r["evidence"] = json.loads(r["evidence"])
+                except Exception:
+                    pass
+        return rows
+
+    def save_system_metrics(self, data: dict[str, Any]) -> None:
+        ts = data.get("timestamp", datetime.now(timezone.utc).isoformat())
+        self._write("INSERT OR REPLACE INTO system_metrics(timestamp,data) VALUES(?,?)", (ts, json.dumps(data, default=str)))
+
+    def cleanup_retention(self, max_flows: int = 50000, max_alerts: int = 10000) -> None:
+        self._write("DELETE FROM flows WHERE id NOT IN (SELECT id FROM flows ORDER BY id DESC LIMIT ?)", (max_flows,))
+        self._write("DELETE FROM alerts WHERE alert_id NOT IN (SELECT alert_id FROM alerts ORDER BY timestamp DESC LIMIT ?)", (max_alerts,))
 
     def metrics(self) -> dict[str, Any]:
         alert_count = self._rows("SELECT COUNT(*) AS n FROM alerts")[0]["n"]

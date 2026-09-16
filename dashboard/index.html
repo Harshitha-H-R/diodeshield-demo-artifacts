@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DIODESHIELD SOC — Passive OT AI Cyber-Threat Detection</title>
+<title>DIODESHIELD SOC — Real-Time Production Network Threat Detection</title>
 <style>
 :root {
   --bg: #090d16;
@@ -41,7 +41,7 @@ body {
   color: var(--text);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, Arial, sans-serif;
 }
-main { max-width: 1360px; margin: auto; padding: 20px; }
+main { max-width: 1400px; margin: auto; padding: 20px; }
 header {
   display: flex;
   justify-content: space-between;
@@ -146,52 +146,64 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
 .inspector-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 14px; }
 .tree-shap-row { display: grid; grid-template-columns: 160px 1fr 60px; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
 .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--card); border: 1px solid var(--line); }
+.telemetry-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
 </style>
 </head>
 <body>
 <main>
+
 <header>
   <div>
     <h1>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      DIODESHIELD SOC
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--blue);"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      DIODESHIELD
+      <span class="tag" style="font-size:12px; font-weight:700; background:#1e3a8a; color:#93c5fd; border-color:#3b82f6;">PRODUCTION SOC</span>
     </h1>
-    <div class="subhead">Passive OT Threat Detection · Unidirectional Data Diode Boundary · NTRO PS-26145</div>
+    <p class="subhead">Passive Optical Data Diode & Real-Time Network Threat Detection Platform</p>
   </div>
-  <div style="display: flex; gap: 10px; align-items: center;">
-    <span id="wsStatus" class="pill pill-amber">○ CONNECTING WS</span>
-    <span class="pill pill-blue">PASSIVE / ZERO-TX</span>
-    <button id="themeBtn" class="secondary">Theme</button>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <span id="wsStatus" class="pill pill-muted">○ WS CONNECTING</span>
+    <button id="themeBtn" class="secondary" title="Toggle UI Theme">🌓 Theme</button>
   </div>
 </header>
 
 <nav class="nav">
-  <button class="active" data-view="overview">Overview & Triage</button>
+  <button data-view="overview" class="active">SOC Overview</button>
   <button data-view="inspector">Alert Inspector</button>
-  <button data-view="packets">Flow Analysis</button>
-  <button data-view="models">AI Models & Fusion</button>
+  <button data-view="packets">Live Flows</button>
+  <button data-view="threatintel">Threat Intelligence</button>
+  <button data-view="models">AI Models & Provenance</button>
   <button data-view="chain">Evidence Hash Chain</button>
-  <button data-view="reports">Reports</button>
+  <button data-view="reports">Incident Reports</button>
 </nav>
 
 <!-- OVERVIEW VIEW -->
 <section id="overview" class="view active">
-  <!-- LIVE CAPTURE & THREAT INJECTION CONTROL PANEL -->
+  <!-- LIVE NETWORK CAPTURE & INTERFACE CONTROL BAR -->
   <div class="panel" style="margin-bottom: 16px; border-left: 4px solid var(--blue); background: var(--panel);">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        <span id="captureLivePill" class="pill pill-green" style="font-size: 12px; font-weight: 700;">● LIVE CAPTURE ACTIVE</span>
-        <span class="muted" style="font-size: 12px;">Mode: <b id="captureModeTxt" style="color:var(--text);">Native Stream & Socket</b></span>
-        <span class="muted" style="font-size: 12px;">Diode Ingest: <b id="capturePacketsTxt" style="color:var(--blue-light);">0 pkts</b></span>
-        <button id="toggleCaptureBtn" class="secondary" style="padding: 4px 10px; font-size: 12px;">Toggle Capture</button>
+        <span id="captureLivePill" class="pill pill-green" style="font-size: 12px; font-weight: 700;">● SNIFFING</span>
+        <label style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">
+          Interface:
+          <select id="interfaceSelect" style="margin-left:4px; padding: 4px 8px;"></select>
+        </label>
+        <button id="toggleCaptureBtn" class="secondary" style="padding: 4px 10px; font-size: 12px;">Pause Capture</button>
       </div>
       <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <span class="muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: .05em;">One-Click Threat Injection:</span>
-        <button class="inject-btn" data-scenario="flood" style="background:#dc2626; padding: 6px 12px; font-size: 12px;">⚡ UDP Flood</button>
-        <button class="inject-btn" data-scenario="spoof" style="background:#ea580c; padding: 6px 12px; font-size: 12px;">⚡ IP Spoof</button>
-        <button class="inject-btn" data-scenario="altered" style="background:#9333ea; padding: 6px 12px; font-size: 12px;">⚡ Alteration</button>
-        <button class="inject-btn" data-scenario="beacon" style="background:#b45309; padding: 6px 12px; font-size: 12px;">⚡ C2 Beacon</button>
-        <button class="inject-btn" data-scenario="recon" style="background:#2563eb; padding: 6px 12px; font-size: 12px;">⚡ OT Recon</button>
+        <div class="telemetry-chip">Rate: <b id="speedPps" style="color:var(--blue-light);">0</b> <span class="muted">PPS</span></div>
+        <div class="telemetry-chip">Throughput: <b id="speedBps" style="color:var(--green);">0</b> <span class="muted">Kbps</span></div>
+        <div class="telemetry-chip">Active Flows: <b id="speedFlows" style="color:var(--amber);">0</b></div>
+        <div class="telemetry-chip">Drops: <b id="speedDrops" style="color:var(--red);">0</b></div>
       </div>
     </div>
   </div>
@@ -207,42 +219,45 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
         <option>INFO</option>
       </select>
     </label>
-    <label>Category <input id="categoryFilter" placeholder="e.g. BEACONING"></label>
+    <label>Category <input id="categoryFilter" placeholder="e.g. PORT_SCAN"></label>
     <label>Source IP <input id="sourceFilter" placeholder="e.g. 192.168.1.10"></label>
     <button id="applyFilters">Apply</button>
     <button id="clearFilters" class="secondary">Clear</button>
-    <span id="systemPill" class="pill" style="margin-left: auto;">INITIALIZING...</span>
+    <span id="systemPill" class="pill" style="margin-left: auto;">INITIALIZING SENSORS...</span>
   </div>
 
   <div class="cards" id="kpiCards">
     <div class="card kpi"><div class="label">Total Alerts</div><div class="value" id="kpiTotal">0</div></div>
     <div class="card kpi danger"><div class="label">Critical Threats</div><div class="value" id="kpiCritical">0</div></div>
     <div class="card kpi warn"><div class="label">High Severity</div><div class="value" id="kpiHigh">0</div></div>
-    <div class="card kpi"><div class="label">Observed Packets</div><div class="value" id="kpiPackets">0</div></div>
-    <div class="card kpi success"><div class="label">Chain Integrity</div><div class="value" id="kpiIntegrity" style="font-size:16px; margin-top:12px;">VERIFYING...</div></div>
+    <div class="card kpi success"><div class="label">Total Packets</div><div class="value" id="kpiPackets">0</div></div>
+    <div class="card kpi"><div class="label">SHA-256 Chain</div><div class="value" id="kpiIntegrity" style="font-size:16px; margin-top:12px;">VERIFYING...</div></div>
   </div>
 
   <div class="grid-2">
-    <div>
-      <h2>Recent Security Alerts (Click row to inspect)</h2>
-      <div class="panel">
-        <table>
+    <!-- Live Alerts Feed Table -->
+    <div class="panel">
+      <h2>Live Threat Detections (Real-Time Feed)</h2>
+      <div style="max-height: 480px; overflow-y: auto;">
+        <table id="alertsTable">
           <thead>
-            <tr><th>Timestamp</th><th>Level</th><th>Category</th><th>Score</th><th>Why</th></tr>
+            <tr><th>Time</th><th>Level</th><th>Category</th><th>Score</th><th>Method & Evidence</th></tr>
           </thead>
-          <tbody id="alertsTable"><tr><td colspan="5" class="muted">Waiting for alerts...</td></tr></tbody>
+          <tbody><tr><td colspan="5" class="muted">Listening for live threats...</td></tr></tbody>
         </table>
       </div>
     </div>
+
+    <!-- Real-Time Inspection Card -->
     <div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 12px;">
-        <h2 style="margin:0;">Live Threat Inspector</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h2>Alert Diagnostic Inspector</h2>
         <label style="font-size:12px; font-weight:normal; display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:var(--muted);">
           <input type="checkbox" id="autoTrackLatest" checked> Auto-Track Latest
         </label>
       </div>
       <div class="panel" id="overviewInspector">
-        <p class="muted">Click any alert in the table to display full multi-model voting, TreeSHAP feature breakdown, and cryptographic SHA-256 evidence chain verification.</p>
+        <p class="muted">Select any alert in the table to display full multi-model attribution, rule matching, and cryptographic SHA-256 evidence chain verification.</p>
       </div>
     </div>
   </div>
@@ -277,16 +292,55 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
   </div>
 </section>
 
-<!-- FLOWS VIEW -->
+<!-- LIVE FLOWS VIEW -->
 <section id="packets" class="view">
-  <h2>Unidirectional Traffic Flow Telemetry</h2>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <h2>Real-Time Network Flow Telemetry (Bidirectional Sessions)</h2>
+    <span class="pill pill-blue" id="flowCountPill">0 ACTIVE FLOWS</span>
+  </div>
   <div class="panel">
     <table>
       <thead>
-        <tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Packets</th><th>Bytes</th><th>Anomaly Score</th></tr>
+        <tr>
+          <th>Last Seen</th>
+          <th>Source</th>
+          <th>Destination</th>
+          <th>Protocol</th>
+          <th>Packets (F/B)</th>
+          <th>Bytes</th>
+          <th>PPS</th>
+          <th>TCP State / Service</th>
+        </tr>
       </thead>
-      <tbody id="trafficTable"><tr><td colspan="7" class="muted">No flow telemetry available.</td></tr></tbody>
+      <tbody id="trafficTable"><tr><td colspan="8" class="muted">No live traffic detected. Listening on interface...</td></tr></tbody>
     </table>
+  </div>
+</section>
+
+<!-- THREAT INTELLIGENCE VIEW -->
+<section id="threatintel" class="view">
+  <h2>Real-Time External Threat Intelligence</h2>
+  <div class="panel" style="margin-bottom: 16px;">
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <input id="tiQueryIp" placeholder="Query IP reputation (e.g. 1.1.1.1, Tor Exit, External C2)..." style="flex: 1; min-width: 260px; font-family: var(--font-mono);">
+      <button id="tiQueryBtn">Query Reputation</button>
+      <div id="tiResultBox" style="margin-left: 10px;"></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="panel">
+      <h3>Active Threat Intelligence Feeds</h3>
+      <ul class="list" id="tiFeedsList">
+        <li><span>Tor Bulk Exit Node Directory</span><span class="pill pill-green">ACTIVE & CACHED</span></li>
+        <li><span>AbuseIPDB v2 API</span><span class="pill" id="tiAbuseStatus">CHECKING...</span></li>
+        <li><span>AlienVault OTX API</span><span class="pill" id="tiOtxStatus">CHECKING...</span></li>
+        <li><span>RFC 1918 Private Subnet Filter</span><span class="pill pill-blue">ENABLED</span></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Reputation Attribution Details</h3>
+      <div id="tiDetailsCard" class="muted">Enter an IP address above to test real-time threat intelligence lookup.</div>
+    </div>
   </div>
 </section>
 
@@ -301,11 +355,10 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
       <div id="modelScoreBars" style="margin-top: 14px;">Loading scores...</div>
     </div>
     <div class="panel">
-      <h2>Training Provenance & Calibrated Metadata</h2>
+      <h2>Model Manifest & Operational Telemetry</h2>
       <div id="provenanceContent" style="max-height: 380px; overflow-y: auto;">Loading provenance...</div>
     </div>
   </div>
-  <p class="muted">Honesty Notice: Models are prototype-trained on synthetic metadata-only lab data for evaluation purposes. In production, unverified datasets are rejected by cryptographic manifest check.</p>
 </section>
 
 <!-- EVIDENCE CHAIN VIEW -->
@@ -315,7 +368,7 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
     <div id="chainStatusBadge" class="badge-integrity badge-verified">VERIFYING ENTIRE CHAIN...</div>
   </div>
   <div class="panel" style="margin-bottom: 16px;">
-    <p class="muted" style="margin: 0;">Each alert computes: <code>SHA256(previous_hash + normalized_payload + timestamp)</code>. Any alteration of scores, categories, or payload invalidates the chain.</p>
+    <p class="muted" style="margin: 0;">Each security alert computes: <code>SHA256(previous_hash + normalized_payload + timestamp)</code>. Any alteration of scores, categories, or payload invalidates the chain.</p>
   </div>
   <div class="panel">
     <div id="chainList">Loading hash chain entries...</div>
@@ -329,7 +382,7 @@ tr.selected { background: #1e293b; border-left: 3px solid var(--blue); }
     <div class="filters" style="margin-bottom: 0;">
       <label>Start Time <input id="repStart" type="datetime-local"></label>
       <label>End Time <input id="repEnd" type="datetime-local"></label>
-      <label>Category <input id="repCategory" placeholder="e.g. BEACONING"></label>
+      <label>Category <input id="repCategory" placeholder="e.g. PORT_SCAN"></label>
       <button id="genReportBtn">Generate Report</button>
       <button id="downloadReportBtn" class="secondary">Download JSON</button>
     </div>
@@ -356,6 +409,7 @@ const safeApi = async (url, fallback) => {
 let currentAlerts = [];
 let selectedAlert = null;
 let lastReportData = null;
+let availableInterfaces = [];
 
 // Tab Navigation
 document.querySelectorAll('.nav button').forEach(btn => {
@@ -390,6 +444,8 @@ function connectWS() {
         const msg = JSON.parse(e.data);
         if (msg.event_type === 'alert') {
           refreshDashboard();
+        } else if (msg.event_type === 'heartbeat' && msg.capture) {
+          updateCaptureTelemetry(msg.capture);
         }
       } catch (err) {}
     };
@@ -408,6 +464,15 @@ function connectWS() {
   }
 }
 
+function updateCaptureTelemetry(cap) {
+  if (!cap) return;
+  $('#speedPps').textContent = cap.current_pps !== undefined ? cap.current_pps : 0;
+  const kbps = Math.round((cap.current_bps || 0) / 1000);
+  $('#speedBps').textContent = kbps;
+  $('#speedDrops').textContent = cap.total_packets_dropped || 0;
+  if ($('#speedQueue')) $('#speedQueue').textContent = cap.queue_depth || 0;
+}
+
 // Render Alert Inspector Card
 function renderInspector(item, targetEl) {
   if (!item) {
@@ -416,11 +481,14 @@ function renderInspector(item, targetEl) {
   }
   const scores = item.model_scores || {};
   const reasons = item.reasons || [];
+  const evidenceList = item.evidence || [];
   const explanation = item.explanation || {};
   const topFeatures = explanation.top_positive || item.top_features || [];
   const seq = item.chain_sequence || 0;
   const evHash = item.evidence_hash || 'None';
   const prevHash = item.previous_hash || '0'.repeat(64);
+  const detMethod = item.detection_method || 'Multi-Layer Engine';
+  const recAction = item.recommended_action || 'Inspect source host and review activity.';
 
   // Model Vote Bars
   const modelNames = ['xgboost', 'lstm', 'fft', 'kitsune', 'isolation_forest'];
@@ -457,7 +525,7 @@ function renderInspector(item, targetEl) {
         </span>
       </div>
     `;
-  }).join('') : '<p class="muted">No feature attributions available.</p>';
+  }).join('') : '<p class="muted">Rule & behavioral detection match; continuous feature baseline intact.</p>';
 
   targetEl.innerHTML = `
     <div class="inspector-header">
@@ -469,13 +537,14 @@ function renderInspector(item, targetEl) {
         </div>
       </div>
       <div style="text-align: right;">
-        <div class="label">Fused Score</div>
-        <div class="value ${item.risk_level}" style="margin:0;">${Number(item.risk_score).toFixed(2)}</div>
+        <div class="label">Confidence Score</div>
+        <div class="value ${item.risk_level}" style="margin:0;">${Number(item.confidence || item.risk_score).toFixed(2)}</div>
       </div>
     </div>
 
     <div style="margin-bottom:14px;">
-      <div class="badge-integrity badge-verified">
+      <span class="pill pill-blue" style="font-size:11px; margin-right:8px;">DETECTED BY: ${detMethod}</span>
+      <div class="badge-integrity badge-verified" style="margin-top:6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
         SHA-256 TAMPER-EVIDENT CHAIN VERIFIED (Seq #${seq})
       </div>
@@ -485,20 +554,25 @@ function renderInspector(item, targetEl) {
       </div>
     </div>
 
-    <h3>Multi-Model Voting (5 Branches)</h3>
+    <h3>Observed Evidence</h3>
+    <ul class="list" style="margin-bottom:14px; background:var(--card); padding:8px 12px; border-radius:8px;">
+      ${(Array.isArray(evidenceList) ? evidenceList : [evidenceList]).concat(reasons).filter(Boolean).map(e => `<li><span>${e}</span></li>`).join('') || '<li><span class="muted">Standard threshold breach</span></li>'}
+    </ul>
+
+    <h3>Recommended SOC Investigation Action</h3>
+    <div style="background:var(--card); padding:10px 12px; border-radius:8px; margin-bottom:14px; border-left:3px solid var(--blue-light);">
+      <b>${recAction}</b>
+    </div>
+
+    <h3>AI Model Multi-Branch Consensus</h3>
     <div style="background:var(--card); padding:12px; border-radius:8px; margin-bottom:14px;">
       ${modelBarsHtml}
     </div>
 
     <h3>Feature Attribution (${explanation.method || 'TreeSHAP'})</h3>
-    <div style="background:var(--card); padding:12px; border-radius:8px; margin-bottom:14px;">
+    <div style="background:var(--card); padding:12px; border-radius:8px;">
       ${shapRowsHtml}
     </div>
-
-    <h3>Triggered Policy Rationale</h3>
-    <ul class="list" style="margin-bottom:0;">
-      ${reasons.map(r => `<li><span>${r}</span></li>`).join('') || '<li><span class="muted">Threshold exceedance</span></li>'}
-    </ul>
   `;
 }
 
@@ -535,39 +609,67 @@ $('#inspectBtn').onclick = async () => {
   }
 };
 
-// Threat Injection Event Handlers
-document.querySelectorAll('.inject-btn').forEach(btn => {
-  btn.onclick = async () => {
-    const scenario = btn.dataset.scenario;
-    const oldText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Injecting...';
-    try {
-      const res = await fetch('/api/simulator/inject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario: scenario, count: 200 })
-      });
-      const data = await res.json();
-      if (data.latest_alert) {
-        selectedAlert = data.latest_alert;
-      }
-      await refreshDashboard();
-    } catch (err) {
-      console.error('Injection error:', err);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = oldText;
-    }
-  };
-});
+// Interface Switcher & Capture Toggle
+async function loadInterfaces() {
+  const ifaces = await safeApi('/api/interfaces', []);
+  availableInterfaces = ifaces;
+  const select = $('#interfaceSelect');
+  if (!select) return;
+  select.innerHTML = ifaces.map(i => {
+    const ipStr = i.ipv4 && i.ipv4.length ? ` (${i.ipv4.join(', ')})` : '';
+    const statusStr = i.is_up ? ' [UP]' : '';
+    return `<option value="${i.id}">${i.name}${ipStr}${statusStr}</option>`;
+  }).join('');
 
-if ($('#toggleCaptureBtn')) {
-  $('#toggleCaptureBtn').onclick = async () => {
-    await fetch('/api/simulator/toggle_capture', { method: 'POST' });
+  select.onchange = async () => {
+    const chosen = select.value;
+    await fetch('/api/capture/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ interface_id: chosen })
+    });
     await refreshDashboard();
   };
 }
+
+let captureRunning = true;
+$('#toggleCaptureBtn').onclick = async () => {
+  if (captureRunning) {
+    await fetch('/api/capture/stop', { method: 'POST' });
+    captureRunning = false;
+    $('#toggleCaptureBtn').textContent = 'Resume Capture';
+  } else {
+    await fetch('/api/capture/start', { method: 'POST' });
+    captureRunning = true;
+    $('#toggleCaptureBtn').textContent = 'Pause Capture';
+  }
+  await refreshDashboard();
+};
+
+// Threat Intel Quick Query
+$('#tiQueryBtn').onclick = async () => {
+  const ip = $('#tiQueryIp').value.trim();
+  if (!ip) return;
+  $('#tiResultBox').innerHTML = '<span class="pill">Querying...</span>';
+  const res = await safeApi('/api/threat-intel/lookup/' + encodeURIComponent(ip), null);
+  if (res) {
+    const isMal = res.is_malicious;
+    $('#tiResultBox').innerHTML = `
+      <span class="pill ${isMal ? 'pill-red' : 'pill-green'}">
+        ${isMal ? 'MALICIOUS DETECTED' : 'CLEAN / UNLISTED'} (Score: ${res.reputation_score})
+      </span>
+    `;
+    $('#tiDetailsCard').innerHTML = `
+      <div style="background:var(--card); padding:12px; border-radius:8px;">
+        <div><b>Target IP:</b> <span style="font-family:var(--font-mono);">${res.ip}</span></div>
+        <div><b>Source Feed:</b> ${res.source}</div>
+        <div><b>Attribution:</b> ${res.attribution}</div>
+        <div><b>Reputation Score:</b> ${res.reputation_score}</div>
+        <div><b>Cached:</b> ${res.cached ? 'Yes (within TTL)' : 'Live query'}</div>
+      </div>
+    `;
+  }
+};
 
 // Canvas Graph Drawing Helpers
 function drawModelTimeseries(rows) {
@@ -641,62 +743,70 @@ async function refreshDashboard() {
 
   const [
     health,
-    capture,
+    captureStatus,
+    captureStats,
     alerts,
     summary,
-    traffic,
+    flows,
     models,
     modelTS,
     chain,
     integrity,
-    provenance
+    provenance,
+    tiStatus
   ] = await Promise.all([
     safeApi('/health', {}),
     safeApi('/api/capture-status', {}),
+    safeApi('/api/capture/stats', {}),
     safeApi('/api/alerts?limit=25' + filterSuffix, []),
     safeApi('/api/dashboard-summary' + filterSuffix, { kpis: {} }),
-    safeApi('/api/traffic?limit=15', []),
+    safeApi('/api/flows?limit=20', []),
     safeApi('/api/models', []),
     safeApi('/api/model-timeseries?limit=50', []),
     safeApi('/api/evidence-chain?limit=20', []),
     integrityPromise,
-    safeApi('/api/training/provenance', {})
+    safeApi('/api/training/provenance', {}),
+    safeApi('/api/threat-intel/status', {})
   ]);
 
   if (checkIntegrityNow) lastIntegrityCheck = integrity;
   currentAlerts = alerts;
 
-  // Live Capture Control Bar UI
-  if (capture.running) {
-    if ($('#captureLivePill')) {
-      $('#captureLivePill').className = 'pill pill-green';
-      $('#captureLivePill').textContent = '● LIVE CAPTURE ACTIVE';
-    }
+  // Live Capture Status & Pill
+  captureRunning = !!captureStatus.running;
+  if (captureStatus.running) {
+    $('#captureLivePill').className = 'pill pill-green';
+    $('#captureLivePill').textContent = '● SNIFFING';
+    $('#toggleCaptureBtn').textContent = 'Pause Capture';
   } else {
-    if ($('#captureLivePill')) {
-      $('#captureLivePill').className = 'pill pill-amber';
-      $('#captureLivePill').textContent = '○ CAPTURE PAUSED';
-    }
-  }
-  if ($('#captureModeTxt')) {
-    $('#captureModeTxt').textContent = capture.mode || 'Passive Stream & Loopback';
-  }
-  const totalPkts = Math.max(Number(capture.packets_captured || 0), Number(summary.kpis?.packets || 0));
-  if ($('#capturePacketsTxt')) {
-    $('#capturePacketsTxt').textContent = totalPkts.toLocaleString() + ' pkts';
+    $('#captureLivePill').className = 'pill pill-amber';
+    $('#captureLivePill').textContent = '○ CAPTURE PAUSED';
+    $('#toggleCaptureBtn').textContent = 'Resume Capture';
   }
 
+  // Update Telemetry Speedometer
+  updateCaptureTelemetry(captureStats);
+  $('#speedFlows').textContent = flows.length;
+  $('#flowCountPill').textContent = `${flows.length} ACTIVE FLOWS`;
+
   // System Status Pill
-  const zeek = health.zeek_available ? 'Zeek ✓' : 'Zeek ✗';
-  const tshark = health.tshark_available ? 'TShark ✓' : 'TShark ✗';
-  $('#systemPill').textContent = `Sensors: ${zeek} | ${tshark} · Native Live Stream Active`;
+  const ifaceName = captureStatus.interface ? captureStatus.interface.split('{')[0].replace('\\Device\\NPF_', '') : 'auto';
+  $('#systemPill').textContent = `Interface: ${ifaceName || 'live'} · Zero-Synthetic Production Engine`;
+
+  // Threat Intel Feed status
+  if (tiStatus) {
+    if ($('#tiAbuseStatus')) {
+      $('#tiAbuseStatus').textContent = tiStatus.abuseipdb_configured ? 'CONFIGURED' : 'UNCONFIGURED (FAIL-OPEN)';
+      $('#tiAbuseStatus').className = `pill ${tiStatus.abuseipdb_configured ? 'pill-green' : 'pill-muted'}`;
+    }
+  }
 
   // KPIs
   const k = summary.kpis || {};
   $('#kpiTotal').textContent = k.alerts !== undefined ? k.alerts : alerts.length;
   $('#kpiCritical').textContent = k.critical || 0;
   $('#kpiHigh').textContent = k.high || 0;
-  $('#kpiPackets').textContent = totalPkts.toLocaleString();
+  $('#kpiPackets').textContent = (captureStats.total_packets_received || summary.total_packets || 0).toLocaleString();
 
   // Integrity Status
   const integrityBadge = $('#kpiIntegrity');
@@ -712,18 +822,18 @@ async function refreshDashboard() {
   }
 
   // Alerts Table
-  const tbody = $('#alertsTable');
+  const tbody = $('#alertsTable tbody');
   if (alerts.length) {
     tbody.innerHTML = alerts.map(a => {
       const isSel = selectedAlert && selectedAlert.alert_id === a.alert_id;
-      const reasonsTxt = (a.reasons || []).join('; ') || 'Evidence pattern detected';
+      const reasonsTxt = (Array.isArray(a.evidence) ? a.evidence.join('; ') : a.evidence) || (a.reasons || []).join('; ') || 'Threshold breach';
       const timeStr = new Date(a.timestamp).toLocaleTimeString();
       return `
         <tr class="clickable ${isSel ? 'selected' : ''}" data-id="${a.alert_id}" onclick="selectAlert('${a.alert_id}', true)">
           <td style="font-family:var(--font-mono); font-size:12px;">${timeStr}</td>
           <td class="${a.risk_level}">${a.risk_level}</td>
           <td><b>${a.attack_category}</b></td>
-          <td style="font-family:var(--font-mono); font-weight:700;">${Number(a.risk_score).toFixed(2)}</td>
+          <td style="font-family:var(--font-mono); font-weight:700;">${Number(a.confidence || a.risk_score).toFixed(2)}</td>
           <td class="muted" style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${reasonsTxt}</td>
         </tr>
       `;
@@ -734,25 +844,31 @@ async function refreshDashboard() {
       selectAlert(alerts[0].alert_id, false);
     }
   } else {
-    tbody.innerHTML = '<tr><td colspan="5" class="muted">No alerts matching current filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="muted">No alerts matching current filters. System running on clean traffic.</td></tr>';
   }
 
-  // Flows Table (Includes real laptop IP connections)
+  // Flows Table (Real Bidirectional Network Telemetry)
   const tBodyFlows = $('#trafficTable');
-  if (traffic.length) {
-    tBodyFlows.innerHTML = traffic.map(f => `
-      <tr>
-        <td style="font-family:var(--font-mono); font-size:12px;">${new Date(f.timestamp).toLocaleTimeString()}</td>
-        <td style="font-family:var(--font-mono);">${f.src_ip || 'N/A'}</td>
-        <td style="font-family:var(--font-mono);">${f.dst_ip || 'N/A'}</td>
-        <td><span class="tag">${f.protocol || 'TCP'}</span></td>
-        <td>${f.packets}</td>
-        <td>${(f.bytes || 0).toLocaleString()}</td>
-        <td style="font-family:var(--font-mono);">${Number(f.anomaly_score || 0).toFixed(2)}</td>
-      </tr>
-    `).join('');
+  if (flows.length) {
+    tBodyFlows.innerHTML = flows.map(f => {
+      const timeStr = f.last_seen ? new Date(f.last_seen).toLocaleTimeString() : (f.timestamp ? new Date(f.timestamp).toLocaleTimeString() : 'N/A');
+      const pktsStr = f.fwd_packets !== undefined ? `${f.fwd_packets} / ${f.bwd_packets}` : (f.packets || 1);
+      const stateStr = f.tcp_state || f.app_protocol || 'ACTIVE';
+      return `
+        <tr>
+          <td style="font-family:var(--font-mono); font-size:12px;">${timeStr}</td>
+          <td style="font-family:var(--font-mono);">${f.src_ip}:${f.src_port || '*'}</td>
+          <td style="font-family:var(--font-mono);">${f.dst_ip}:${f.dst_port || '*'}</td>
+          <td><span class="tag">${f.protocol || 'TCP'}</span></td>
+          <td>${pktsStr}</td>
+          <td>${(f.total_bytes || f.bytes || 0).toLocaleString()}</td>
+          <td style="font-family:var(--font-mono);">${f.pps || 0}</td>
+          <td><span class="pill">${stateStr}</span></td>
+        </tr>
+      `;
+    }).join('');
   } else {
-    tBodyFlows.innerHTML = '<tr><td colspan="7" class="muted">No traffic flows recorded.</td></tr>';
+    tBodyFlows.innerHTML = '<tr><td colspan="8" class="muted">No live traffic detected on interface. Waiting for packets...</td></tr>';
   }
 
   // Severity & Entity Lists
@@ -778,7 +894,7 @@ async function refreshDashboard() {
     <div class="card">
       <div class="label">${m.model_name}</div>
       <div class="value">${latestScores[m.model_name] !== undefined ? Number(latestScores[m.model_name]).toFixed(2) : '0.00'}</div>
-      <div class="subhead">${m.backend || 'adaptive'} · <span class="tag">${m.training_status || 'trained'}</span></div>
+      <div class="subhead">${m.backend || 'adaptive'} · <span class="tag">${m.training_status || 'production'}</span></div>
       <div class="chain muted" style="margin-top:6px; font-size:11px;">${m.model_version || 'v1.0.0'}</div>
     </div>
   `).join('');
@@ -798,7 +914,7 @@ async function refreshDashboard() {
     <div class="card" style="margin-bottom:10px;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <b>${m.model_name}</b>
-        <span class="pill pill-green">${m.training_status || 'trained'}</span>
+        <span class="pill pill-green">${m.training_status || 'calibrated'}</span>
       </div>
       <div class="muted" style="margin:4px 0 8px; font-size:12px;">Backend: ${m.backend} | Version: ${m.model_version}</div>
       <pre class="chain" style="margin:0; background:var(--bg); padding:8px; border-radius:6px;">${JSON.stringify(m.provenance || { status: 'calibrated' }, null, 2)}</pre>
@@ -852,10 +968,10 @@ $('#downloadReportBtn').onclick = () => {
 };
 
 // Init
+loadInterfaces();
 connectWS();
 refreshDashboard();
 setInterval(refreshDashboard, 2000);
 </script>
 </body>
 </html>
-

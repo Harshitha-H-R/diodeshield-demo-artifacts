@@ -1,6 +1,6 @@
 system:
-  mode: synthetic
-  sensor_version: "0.1.0"
+  mode: production
+  sensor_version: "1.0.0"
   live_capture: true
 window:
   size_seconds: 5

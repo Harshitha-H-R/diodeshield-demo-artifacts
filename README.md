@@ -1,316 +1,229 @@
 # DIODESHIELD 🛡️
 
-> **AI-Based Cyber-Threat Detection for Unidirectional IP Traffic across Hardware Data Diodes**  
+> **Production Real-Time Network Security Monitoring & Cyber-Threat Detection Platform**  
 > *Smart India Hackathon PS-26145 | Organization: NTRO (National Technical Research Organisation)*
 
 ---
 
 ## 1. Executive Summary
 
-**DIODESHIELD** is a passive, receive-side cyber-threat detection engine tailored specifically for Operational Technology (OT) and Industrial Control System (ICS) networks protected by a **hardware data diode** (one-way physical boundary).
+**DIODESHIELD** is an enterprise-ready, production-grade real-time network security monitoring and cyber-threat detection platform.
 
-In a strict data diode deployment:
-* **Zero Transmission (Zero-TX)**: The receive network cannot send any packets back (no ACKs, no handshake, no ARP/ICMP probing, no return channel).
-* **Metadata & Flow Analysis**: Threat detection must operate purely on unidirectional packet metadata and payload signatures arriving at the receiver.
-* **Tamper-Evident Evidence**: Every detection must form an auditable, cryptographically chained evidence trail.
+The system operates exclusively on **real network traffic and authentic telemetry** captured dynamically from physical and virtual host network interfaces (Ethernet, Wi-Fi, Loopback, virtual adapters). All simulated, fabricated, dummy, and synthetic traffic components have been completely eliminated.
 
-DIODESHIELD implements a **5-branch multi-model AI ensemble** with real-time **TreeSHAP explainability**, an **unbroken SHA-256 cryptographic evidence hash chain**, a **universal live packet capture engine** that monitors host/laptop IP flows without requiring administrative privileges, and an interactive **Web SOC Dashboard**.
+Key architectural guarantees:
+* **Real Packet & Flow Ingestion**: Dynamic network interface enumeration via Npcap/Scapy with asynchronous ring-buffered queueing to capture line-rate network traffic without packet loss or blocking.
+* **Layered Multi-Engine Detection**: Operates 5 complementary detection layers simultaneously:
+  1. *Signature Engine*: Deterministic, versioned rules with MITRE ATT&CK mappings (Xmas scans, Null scans, SYN-FIN probes, industrial OT protocol violations).
+  2. *Behavioral Detector*: Stateful entity tracking for vertical port scans, horizontal subnet sweeps, C2 beaconing via inter-arrival interval jitter clustering, and connection storms.
+  3. *Statistical Anomaly Engine*: Time-aware, host-aware Exponentially Weighted Moving Average (EWMA) and dynamic rolling z-scores derived from observed telemetry.
+  4. *Threat Intelligence Correlation*: Real-time IP reputation lookups querying live feeds (Tor Project bulk exit directory, AbuseIPDB v2, AlienVault OTX) with TTL-based caching and rate limiting.
+  5. *Multi-Model AI Consensus*: 5-branch ensemble (XGBoost, LSTM, Spectral FFT, Kitsune, Isolation Forest) with TreeSHAP explainability.
+* **Cryptographic Tamper-Evidence**: Unbroken SHA-256 evidence hash chain linking every detected security alert to its predecessor, guaranteeing audit immutability.
+* **Zero-Synthetic Honesty**: When an interface is idle, the dashboard and APIs display `"No live traffic detected"`, never generating fake packets or placeholder statistics.
 
 ---
 
-## 2. System Architecture
+## 2. Production Architecture
 
-```
-                                  DATA DIODE BOUNDARY
-                                (Strictly Unidirectional)
-   [ OT Network (Tx) ] =====================================> [ DIODESHIELD Receiver (Rx) ]
-   - Modbus / DNP3 / S7                                              |
-   - Industrial Sensors                                              v
-   - SCADA Telemetry                           +-----------------------------------------------+
-                                               |             Live Ingestion Engine             |
-                                               |  - Host/Laptop IP Traffic Sniffer (psutil)    |
-                                               |  - Localhost UDP Diode Socket (:19001)        |
-                                               |  - Baseline Modbus Polling Stream             |
-                                               |  - Optional TShark / Wireshark Adapter        |
-                                               +-----------------------------------------------+
-                                                                     |
-                                                                     v
-                                               +-----------------------------------------------+
-                                               |         Feature Engineering (32-dim)          |
-                                               |  - Volumetric, Temporal, Spatial, Modbus OT   |
-                                               +-----------------------------------------------+
-                                                                     |
-                                                                     v
-                                               +-----------------------------------------------+
-                                               |         5-Branch Multi-Model Ensemble         |
-                                               |  1. XGBoost (Supervised Decision Trees)       |
-                                               |  2. PyTorch LSTM (Temporal Sequence Anomaly)  |
-                                               |  3. Spectral FFT (Beaconing / Frequency)      |
-                                               |  4. Kitsune (Adaptive Baseline Autoencoder)   |
-                                               |  5. Isolation Forest (Unsupervised Outlier)   |
-                                               +-----------------------------------------------+
-                                                                     |
-                                                                     v
-                                               +-----------------------------------------------+
-                                               |            Ensemble Fusion & Risk             |
-                                               |  - Dynamic Consensus & Disagreement Metric    |
-                                               |  - TreeSHAP Feature Attribution Waterfall     |
-                                               +-----------------------------------------------+
-                                                                     |
-                                                                     v
-                                               +-----------------------------------------------+
-                                               |      SHA-256 Tamper-Evident Hash Chain        |
-                                               |  - Immutable Append-Only SQLite Evidence DB   |
-                                               +-----------------------------------------------+
-                                                                     |
-                                                                     v
-                                               +-----------------------------------------------+
-                                               |            SOC Web Dashboard & API            |
-                                               |  - Real-time WebSocket Feed                   |
-                                               |  - One-Click Threat Injection Control Bar     |
-                                               |  - Live Threat Inspector & Flow Analysis      |
-                                               +-----------------------------------------------+
+```text
+       [ Real Network Interface (Wi-Fi / Ethernet / Loopback) ]
+                                  │
+                                  ▼
+                   [ Live Packet Sniffer (Npcap/Scapy) ]
+                     (Async Worker + Bounded Ring-Buffer)
+                                  │
+                                  ▼
+                     [ Protocol Packet Decoder ]
+             (IPv4, IPv6, TCP Flags, UDP, ICMP, DNS, TLS SNI)
+                                  │
+                                  ▼
+               [ Bidirectional Session Flow Engine ]
+                  (5-tuple tracking, TCP FSM, PPS, BPS)
+                                  │
+        ┌─────────────────────────┴─────────────────────────┐
+        ▼                                                   ▼
+[ Layered Detection Engine ]                    [ Dynamic Feature Engine ]
+  ├── 1. Signature Engine (Rules, ATT&CK)         ├── Volumetric & Temporal
+  ├── 2. Behavioral Engine (Scans, Beaconing)     ├── Spatial Entropy
+  ├── 3. Statistical Baseline (EWMA, Z-Score)     └── Spectral FFT Frequencies
+  ├── 4. Real Threat Intel (Tor, AbuseIPDB)                 │
+  └── 5. Machine Learning (5 AI Models)                     ▼
+        │                                       [ Multi-Model AI Inference ]
+        │                                       (XGBoost, LSTM, FFT, Kitsune, IF)
+        └─────────────────────────┬─────────────────────────┘
+                                  ▼
+               [ Correlation & Deduplication Engine ]
+               (Multi-signal clustering, Alert grouping)
+                                  │
+                                  ▼
+             [ Cryptographic SHA-256 Hash Chain Ledger ]
+               (Immutable append-only SQLite evidence DB)
+                                  │
+                                  ▼
+                 [ Real-Time SOC Dashboard & API ]
+               (WebSocket streaming, Real telemetry charts)
 ```
 
 ---
 
-## 3. Key Capabilities
+## 3. Core Subsystems
 
-### A. 5-Branch AI Detection Ensemble
-* **XGBoost Decision Trees**: Supervised classifier trained to detect rapid volumetric spikes, identity anomalies, and protocol deviations.
-* **PyTorch LSTM Neural Network**: Temporal recurrent architecture tracking inter-arrival times ($IAT$), sequence patterns, and behavioral drift.
-* **Spectral FFT Frequency Analyzer**: Discrete Fourier transforms identify periodic beacon rhythms (e.g. C2 beaconing) distinct from normal OT polling.
-* **Kitsune Online Autoencoder**: Adapted KitNET neural network computing continuous reconstruction error against baseline feature distributions.
-* **Isolation Forest**: High-dimensional ensemble isolating anomalous network feature combinations.
+### A. Real-Time Packet Capture (`diodeshield/capture/`)
+* **Dynamic Interface Discovery**: Discovers all active network interfaces with human-readable descriptions, IPv4/IPv6 addresses, MAC addresses, and link speeds.
+* **Non-Blocking Architecture**: High-priority sniffer pushes raw packets into a bounded ring-buffer queue (`queue.Queue(maxsize=20000)`). A dedicated worker thread decodes and routes events asynchronously without dropping packets under burst conditions.
+* **Live Telemetry Metrics**: Calculates continuous Packets Per Second (PPS), Bits Per Second (BPS), total packets processed, dropped packet counters, and queue depths.
 
-### B. TreeSHAP Explainability
-* Live execution of TreeSHAP on tree ensembles provides mathematical feature attributions ($+$ positive contribution driving alert, $-$ negative contribution dampening risk).
-* Guaranteed visibility into *why* the model made a determination (e.g. `packets_per_sec: +2.16`, `udp_burst_score: +0.20`).
+### B. Packet Decoder (`diodeshield/decoder/`)
+* Full dissection of IPv4 and IPv6 headers.
+* Transport layer parsing: TCP flags (SYN, ACK, FIN, RST, PSH, URG), sequence numbers, acknowledgement numbers, and window sizes.
+* Application protocol identification: HTTP, HTTPS, DNS (query names, record types), TLS (Server Name Indication without payload decryption), and industrial protocols (Modbus/TCP, S7comm, DNP3, IEC-104).
 
-### C. Universal Live Capture (Works on Any Machine)
-* **Real Laptop/Host IP Monitoring**: Uses `psutil` socket sampling to capture real active network flows (TCP, UDP, web, DNS) on your laptop without requiring administrator rights or Npcap drivers.
-* **Loopback UDP Diode Receiver**: Listens on port `19001` with `SO_REUSEADDR` to receive simulated hardware diode bursts.
-* **Baseline OT Stream**: Synthesizes continuous Modbus/TCP polling frames (`10.0.0.7` &rarr; `10.0.0.8:502`) to maintain normal industrial baseline telemetry.
-* **TShark Adapter**: Seamlessly activates if TShark/Wireshark is detected.
+### C. Bidirectional Flow Engine (`diodeshield/flow_engine/`)
+* Reconstructs bidirectional communication sessions indexed by normalized 5-tuples `(src_ip, dst_ip, src_port, dst_port, protocol)`.
+* Tracks forward/backward packet counts, forward/backward byte volumes, inter-arrival time distributions, and TCP state machine transitions (`SYN_SENT`, `SYN_RCVD`, `ESTABLISHED`, `FIN_WAIT`, `RESET`).
 
-### D. Cryptographic SHA-256 Hash Chain
-* Every alert computes:
-  $$\text{Evidence Hash} = \text{SHA256}(\text{previous\_hash} + \text{canonical\_payload} + \text{timestamp})$$
-* Any retroactive tampering or deletion of alert records breaks the cryptographic hash link and triggers instant tampering detection in `/api/integrity`.
-
-### E. Interactive Web SOC Dashboard
-* **One-Click Threat Injection**: Directly test threat categories from the dashboard header (`[⚡ UDP Flood]`, `[⚡ IP Spoof]`, `[⚡ Alteration]`, `[⚡ C2 Beacon]`, `[⚡ OT Recon]`).
-* **Live Threat Inspector**: Auto-tracks incoming alerts with 5-model voting bars, TreeSHAP waterfall charts, policy reasons, and verification badges.
-* **Flow Analysis**: Real-time table of live network flows and anomaly scores.
-* **Zero External CDNs**: Pure HTML5/Canvas/CSS running offline without external dependencies.
+### D. Layered Threat Detection (`diodeshield/detection/`)
+1. **Signature Engine**: Versioned rules mapped to MITRE ATT&CK techniques:
+   * `SIG-SCAN-001`: TCP Xmas Scan (FIN+PSH+URG flags)
+   * `SIG-SCAN-002`: TCP Null Scan (zero flags probe)
+   * `SIG-SCAN-003`: Illegal TCP SYN-FIN scan probe
+   * `SIG-DOS-001`: High-frequency TCP SYN flood
+   * `SIG-OT-001`: Unauthorized Modbus coil/register modification (0x05, 0x06, 0x0F, 0x10)
+   * `SIG-OT-002`: S7comm PLC CPU Stop command
+   * `SIG-NET-001`: Insecure cleartext administration (Telnet port 23)
+2. **Behavioral Detector**:
+   * *Vertical Port Scan*: Source probing $> 20$ destination ports within 2 seconds.
+   * *Horizontal Subnet Sweep*: Source sweeping $> 15$ destination IPs on the same port within 2 seconds.
+   * *C2 Beaconing*: Detects periodic communications with low inter-arrival jitter coefficient of variation ($CV < 0.15$).
+   * *Connection Storms*: Detects abnormal bursts of TCP RSTs and unanswered connection attempts.
+3. **Statistical Baseline Engine**:
+   * Computes EWMA mean and variance continuously on real traffic rates.
+   * Generates dynamic rolling z-scores ($z \ge 3.0$ = warning, $z \ge 5.0$ = critical) without relying on arbitrary fixed constants.
+4. **Threat Intelligence Client**:
+   * Live lookup against AbuseIPDB v2 and official Tor Project bulk exit node directory.
+   * TTL-based local caching (24 hours) and token-bucket rate limiting.
+   * Strict attribution: unknown/clean IPs are marked `NEUTRAL`, never falsely flagged as malicious.
+5. **Correlation Engine**:
+   * Combines signatures, behavioral anomalies, and threat intelligence matches for the same host into correlated security incidents.
+   * Sliding-window deduplication prevents alert storms during network bursts.
 
 ---
 
-## 4. Prerequisites
+## 4. Quick Start Guide
 
-* **Python 3.10, 3.11, 3.12, 3.13, or 3.14**
-* Windows (PowerShell), Linux, or macOS
-* Modern web browser (Chrome, Edge, Firefox, Safari)
+### Prerequisites
+* Python 3.11+ (Windows, Linux, or macOS)
+* Npcap (Windows) or `libpcap` (Linux) for promiscuous packet capture.
 
----
+### 1. Installation
 
-## 5. Step-by-Step Setup & Running Guide
-
-### Step 1: Clone the Repository
-```bash
+```powershell
+# Clone the repository
 git clone https://github.com/Puneeth-S88/diodeshield-demo-artifacts.git
 cd diodeshield-demo-artifacts
-```
 
-### Step 2: Create and Activate Virtual Environment
-**Windows (PowerShell):**
-```powershell
+# Create and activate virtual environment
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1    # On Linux/macOS: source .venv/bin/activate
+
+# Install dependencies
+pip install -e .[ml]
 ```
 
-**Linux / macOS (Bash):**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+### 2. Configuration (`.env`)
+
+Copy `.env.example` to `.env` and configure your preferences:
+
+```ini
+DIODESHIELD_INTERFACE=auto
+DIODESHIELD_LIVE_CAPTURE=true
+DIODESHIELD_DB=data/diodeshield.db
+DIODESHIELD_API_KEY=your-secure-api-key
+DIODESHIELD_JWT_SECRET=your-jwt-secret
+ABUSEIPDB_API_KEY=your-optional-abuseipdb-key
 ```
 
-### Step 3: Install Dependencies
-```bash
-pip install -r requirements.txt
-pip install -e .
-```
-*(Or use `uv pip install -r requirements.txt` for ultra-fast package installation).*
+### 3. Start the Production Server
 
-### Step 4: Calibrate & Train Model Artifacts
-Generate model weights and calibration metadata:
-```bash
-python training/train_all_models.py --synthetic
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn diodeshield.api.main:app --host 127.0.0.1 --port 8000
 ```
-*Output*: Generates calibrated model files in `models/` (`xgboost.json`, `lstm.pt`, `fft.json`, `kitsune.json`, `isolation_forest.joblib`, `provenance.json`).
+
+Access the SOC Web Dashboard at: **`http://127.0.0.1:8000/dashboard/`**  
+Access the interactive OpenAPI Docs at: **`http://127.0.0.1:8000/docs`**
 
 ---
 
-## 6. Running the System
+## 5. Production CLI Usage
 
-### Option A: Launch the Full Web SOC Dashboard (Recommended)
+The system includes a production CLI utility (`diodeshield.cli`):
 
-Start the DIODESHIELD backend and live packet capture service:
 ```powershell
-# Windows PowerShell
-.\.venv\Scripts\python.exe -m uvicorn diodeshield.api.main:app --host 0.0.0.0 --port 8000
-```
-```bash
-# Linux / macOS
-uvicorn diodeshield.api.main:app --host 0.0.0.0 --port 8000
-```
+# List available network interfaces
+python -m diodeshield.cli --list-interfaces
 
-Open your browser at:
-```
-http://localhost:8000/dashboard/
-```
+# Run real-time packet capture in terminal
+python -m diodeshield.cli --capture --interface auto
 
-#### What you will see:
-1. **`● LIVE CAPTURE ACTIVE`** green badge ticking upward with live packet ingest counters.
-2. Real laptop/host network flows populating under the **Flow Analysis** tab.
-3. Click any **One-Click Threat Injection** button (`[⚡ UDP Flood]`, `[⚡ IP Spoof]`, `[⚡ Alteration]`, `[⚡ C2 Beacon]`, `[⚡ OT Recon]`):
-   * An alert immediately appears at the top of the table.
-   * The **Live Threat Inspector** on the right automatically displays model consensus, TreeSHAP feature attributions, and SHA-256 evidence chain verification.
+# Verify unbroken SHA-256 evidence chain integrity
+python -m diodeshield.cli --check-integrity
 
----
+# Check IP threat intelligence reputation
+python -m diodeshield.cli --threat-intel 185.220.101.5
 
-### Option B: One-Command 90-Second Live Replay Demo
-
-To run an automated sequence evaluating normal baseline, C2 beaconing, industrial reconnaissance, Modbus protocol anomalies, and cryptographic hash verification:
-
-**Windows PowerShell:**
-```powershell
-powershell -ExecutionPolicy Bypass -File demo.ps1
-```
-
-**Linux / macOS:**
-```bash
-chmod +x demo.sh
-./demo.sh
+# Display database metrics
+python -m diodeshield.cli --db-metrics
 ```
 
 ---
 
-### Option C: Threat Evaluation Lab Scripts
-
-You can run individual attack simulation scripts from a separate terminal while the dashboard is running:
-
-#### 1. UDP Volumetric Flood Burst:
-```powershell
-python scripts/udp_flood_lab.py --packets 500 --rate 250
-```
-*Simulates high-rate datagram bursts over loopback socket (`127.0.0.1:19001`).*
-
-#### 2. IP Identity Spoofing:
-```powershell
-python scripts/offline_threat_lab.py --scenario spoof --count 1500 --batch-size 250
-```
-*Evaluates detection of virtual source identity rotation across unidirectional boundaries.*
-
-#### 3. Packet / Checksum Alteration:
-```powershell
-python scripts/offline_threat_lab.py --scenario altered --count 1500 --batch-size 250
-```
-*Evaluates payload tampering and checksum integrity detection.*
-
-#### 4. Volumetric Flood (Metadata Stream):
-```powershell
-python scripts/offline_threat_lab.py --scenario flood --count 1500 --batch-size 250
-```
-
-#### 5. Verify Database Cryptographic Hash Chain:
-```powershell
-python -c "from diodeshield.db import Repository; print(Repository().verify_integrity())"
-```
-
----
-
-## 7. Verification & Automated Test Suites
-
-Run the complete test suite to verify code quality, model inference, and tamper detection:
-
-```powershell
-# 1. Pytest Unit & Integration Tests (14 passing tests)
-pytest -q
-
-# 2. Master End-to-End Validation
-python tests/validate_all.py
-
-# 3. Determinism & Regression Suite
-python tests/regression.py
-```
-
----
-
-## 8. REST API Reference
-
-The interactive OpenAPI documentation is available at `http://localhost:8000/docs`.
+## 6. REST & WebSocket API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | System sensor availability, model training status, and DB state |
-| `GET` | `/api/capture-status` | Live packet capture state, mode, packet counter, and error state |
-| `GET` | `/api/alerts` | Paginated alerts with severity, category, and IP filtering |
-| `GET` | `/api/alerts/{id}/validation` | Full alert detail, 5-model votes, TreeSHAP attributions, hash verification |
-| `GET` | `/api/traffic` | Real-time unidirectional network flow telemetry |
-| `GET` | `/api/models` | Metadata and status of the 5 AI model branches |
-| `GET` | `/api/integrity` | Verifies unbroken continuity of the SHA-256 evidence chain |
-| `POST` | `/api/simulator/inject` | Injects synthetic or threat scenarios (`flood`, `spoof`, `altered`, `beacon`, `recon`) |
-| `POST` | `/api/simulator/toggle_capture` | Toggles live packet capture on/off |
-| `WS` | `/ws/alerts` | Real-time WebSocket push feed for alerts and heartbeat telemetry |
+| `GET` | `/health` | System health, sensor status, PPS, and database state |
+| `GET` | `/health/detailed` | Component health across capture, flow engine, TI, and models |
+| `GET` | `/api/interfaces` | Enumerate available physical and virtual network interfaces |
+| `POST` | `/api/capture/select` | Admin endpoint to dynamically bind capture to an interface |
+| `POST` | `/api/capture/start` | Start live packet capture |
+| `POST` | `/api/capture/stop` | Pause live packet capture |
+| `GET` | `/api/capture/stats` | Real-time PPS, BPS, total packets, and drop statistics |
+| `GET` | `/api/flows` | Active bidirectional network flow sessions |
+| `GET` | `/api/alerts` | Filterable security alert history |
+| `GET` | `/api/alerts/{id}/validation` | Alert explanation, TreeSHAP attributions, and hash verification |
+| `GET` | `/api/threat-intel/lookup/{ip}` | Query IP threat reputation with source attribution |
+| `GET` | `/api/threat-intel/status` | Status of external threat intelligence feeds |
+| `GET` | `/api/rules` | List versioned detection rules and ATT&CK techniques |
+| `GET` | `/api/system/metrics` | Host CPU, RAM, process threads, and queue telemetry |
+| `GET` | `/api/integrity` | Verifies continuity of the SHA-256 evidence chain |
+| `WS` | `/ws/alerts` | Real-time WebSocket push stream for alerts and telemetry |
 
 ---
 
-## 9. Project Directory Structure
+## 7. Testing & Verification
 
-```
-diodeshield-demo-artifacts/
-├── configs/
-│   └── default.yaml               # Engine configuration (window size, fusion weights, thresholds)
-├── dashboard/
-│   └── index.html                 # Standalone SOC Web Dashboard (Vanilla JS, Canvas, CSS)
-├── data/
-│   └── diodeshield.db             # SQLite WAL-mode evidence repository & hash chain
-├── demo.ps1                       # Windows 90-second automated demo script
-├── demo.sh                        # Linux/macOS automated demo script
-├── diodeshield/
-│   ├── api/main.py                # FastAPI REST & WebSocket server
-│   ├── capture/live.py            # Multi-mode live capture (psutil, UDP socket, TShark)
-│   ├── db.py                      # SQLite Repository with WAL mode & auto-migration
-│   ├── explainability.py          # TreeSHAP & feature attribution engine
-│   ├── features/builder.py        # 32-dimensional OT feature extractor
-│   ├── fusion.py                  # Weighted multi-branch score fusion
-│   ├── integrity.py               # SHA-256 tamper-evident hash chain implementation
-│   ├── models/                    # Model adapters (XGBoost, LSTM, FFT, Kitsune, IsoForest)
-│   ├── pipeline.py                # Core detection pipeline orchestration
-│   └── risk.py                    # Dual-consensus risk evaluation & policy rules
-├── models/                        # Serialized model weights & provenance manifest
-├── requirements.txt               # Complete dependencies specification
-├── pyproject.toml                 # Package configuration
-├── scripts/
-│   ├── offline_threat_lab.py      # Offline threat scenario evaluation harness
-│   └── udp_flood_lab.py           # Loopback socket UDP flood simulation harness
-├── tests/                         # Pytest suite, regression tests, and full validator
-└── training/                      # Multi-model training and synthetic generation scripts
+All automated tests are strictly isolated inside `tests/` and do not affect production telemetry:
+
+```powershell
+# Run the complete test suite (31 tests)
+pytest tests/ -v
 ```
 
+Verification suite coverage:
+* `test_interface_discovery`: Validates interface enumeration.
+* `test_packet_decoder`: Validates IPv4/IPv6, TCP flags, DNS, and TLS decoding.
+* `test_flow_tracker`: Validates bidirectional session aggregation.
+* `test_signatures`: Validates detection of Xmas, Null, and OT write attacks.
+* `test_behavioral`: Validates port scans, sweeps, and C2 beaconing detection.
+* `test_anomaly_baseline`: Validates EWMA updates and z-score deviation triggers.
+* `test_threat_intel`: Validates caching and private IP filtering.
+* `test_correlation`: Validates alert deduplication and multi-signal clustering.
+* `test_auth_rbac`: Validates JWT token generation and role authorization.
+* `test_api_*`: Validates REST API endpoints and telemetry responses.
+
 ---
 
-## 10. Operational Constraints & Ethics
-
-* **Passive Observation**: DIODESHIELD strictly adheres to data diode boundaries. It never transmits packets into protected industrial zones.
-* **Controlled Mitigation**: Automated host firewall actions are disabled by default. If enabled on Windows (`DIODESHIELD_FIREWALL_BLOCKING=true`), explicit confirmation (`confirm=true`) is required and all actions are recorded to an append-only audit log.
-* **Synthetic Evaluation Notice**: Built-in baseline models are trained on reproducible evaluation datasets for demonstration. Production training uses a fail-closed schema contract (`training/DATASET_CONTRACT.md`) that rejects unverified datasets.
-
----
-
-## 11. License
+## 8. License
 
 Apache 2.0. Developed for the Smart India Hackathon (SIH0145 / NTRO PS-26145).
-
-

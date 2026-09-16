@@ -1,3 +1,6 @@
+"""Real-time detection pipeline orchestrating flow tracking, multi-layer detection,
+AI model inference, explainability, and cryptographic audit chaining.
+"""
 from __future__ import annotations
 
 import time
@@ -6,9 +9,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 from diodeshield.config import load_config
+from diodeshield.configuration.settings import load_app_config
 from diodeshield.db import Repository
+from diodeshield.detection.engine import MultiLayerDetectionEngine
 from diodeshield.explainability import build_explanation
 from diodeshield.features.builder import extract_features
+from diodeshield.flow_engine.tracker import FlowTracker
 from diodeshield.fusion import fuse
 from diodeshield.ingestion.window import SlidingWindow
 from diodeshield.integrity import HashChain
@@ -16,21 +22,31 @@ from diodeshield.models.adapters import enabled_adapters
 from diodeshield.protocol.modbus import parse_modbus_tcp
 from diodeshield.risk import RiskEngine
 from diodeshield.schemas import TrafficEvent
-from diodeshield.threat_intel.ioc import LocalIOCStore
 
 
 class DetectionPipeline:
     def __init__(self, repository: Repository | None = None, config: dict[str, Any] | None = None):
         self.config = config or load_config()
+        self.app_config = load_app_config()
         self.repository = repository or Repository()
-        window = self.config["window"]
+        window = self.config.get("window", {"size_seconds": 5, "slide_seconds": 1})
         self.window = SlidingWindow(window["size_seconds"], window["slide_seconds"])
         self.adapters = enabled_adapters(self.config)
         self.risk = RiskEngine(self.config)
         self.hash_chain = HashChain(self.repository)
-        self.ioc_store = LocalIOCStore()
+        self.flow_tracker = FlowTracker(
+            idle_timeout=self.app_config.retention.flow_idle_timeout_seconds,
+            active_timeout=self.app_config.retention.flow_active_timeout_seconds,
+        )
+        self.detection_engine = MultiLayerDetectionEngine(self.app_config)
         self.baseline: dict[str, float] = {}
-        self.latest_health = {"status": "HEALTHY", "visibility": "traffic_observed", "queue_depth": 0}
+        self.latest_health = {
+            "status": "HEALTHY",
+            "visibility": "traffic_observed",
+            "queue_depth": 0,
+            "packets_captured": 0,
+            "last_event": None,
+        }
         self.subscribers: list[Any] = []
 
     def subscribe(self, callback: Any) -> None:
@@ -38,91 +54,143 @@ class DetectionPipeline:
 
     def ingest(self, event: TrafficEvent) -> list[dict[str, Any]]:
         alerts = []
+        now_iso = datetime.now(timezone.utc).isoformat()
+        self.latest_health["packets_captured"] = self.latest_health.get("packets_captured", 0) + 1
+        self.latest_health["last_event"] = now_iso
+
+        # 1. Update Bidirectional Flow State
+        flow = self.flow_tracker.process_event(event)
+
+        # 2. Instant Packet-Level Detection (Signatures, Behaviors, Real Threat Intel)
+        packet_alerts = self.detection_engine.analyze_packet(event)
+        for pa in packet_alerts:
+            self._finalize_and_save_alert(pa)
+            alerts.append(pa)
+
+        # 3. Sliding Window AI/ML and Statistical Analysis
         for window_events in self.window.add(event):
             result = self.process_window(window_events)
             if result:
                 alerts.append(result)
+
         return alerts
 
+    def _finalize_and_save_alert(self, alert: dict[str, Any]) -> None:
+        self.hash_chain.append(alert)
+        self.repository.save_alert(alert)
+        if alert.get("incident_id"):
+            self.repository.save_incident(alert)
+        for callback in list(self.subscribers):
+            try:
+                callback(alert)
+            except Exception:
+                pass
+
     def process_window(self, events: list[TrafficEvent]) -> dict[str, Any] | None:
+        if not events:
+            return None
+
         features = extract_features(events, self.baseline)
         latencies: dict[str, float] = {}
         scores: dict[str, float] = {}
+
         for name, adapter in self.adapters.items():
             started = time.perf_counter_ns()
             scores[name] = adapter.score(features)
             latencies[name] = round((time.perf_counter_ns() - started) / 1_000_000, 6)
-        # Score before updating the online branch so a novel window is not
-        # normalized away by its own observation.
+
         for adapter in self.adapters.values():
             if hasattr(adapter, "update"):
                 adapter.update(features)
+
         result = fuse(scores, self.config.get("fusion", {}))
         tree_model = getattr(self.adapters.get("xgboost"), "model", None)
         explanation = build_explanation(features, scores, tree_model)
+
         protocol = {}
         for event in events:
             if (event.dst_port == 502 or event.src_port == 502) and event.payload_hex:
                 protocol = parse_modbus_tcp(event.payload_hex)
                 break
+
         features.update({k: v for k, v in protocol.items() if isinstance(v, (float, int))})
         risk = self.risk.evaluate(result, features, protocol, key=f"{events[0].src_ip if events else 'empty'}")
         timestamp = (events[-1].timestamp if events else datetime.now(timezone.utc)).isoformat()
-        self.repository.save_features(timestamp, events[0].asset_id if events else None, features)
-        self.repository.save_model_score(timestamp, result["scores"])
-        self.repository.save_flow({"timestamp": timestamp, "src_ip": events[0].src_ip if events else None,
-                                  "dst_ip": events[0].dst_ip if events else None, "protocol": features.get("protocol"),
-                                  "packets": features.get("packets", 0), "bytes": features.get("bytes", 0),
-                                  "anomaly_score": risk["risk_score"], "asset_id": events[0].asset_id if events else None})
-        self.latest_health.update({"status": "HEALTHY", "last_event": timestamp, "queue_depth": 0,
-                                   "model_latency_ms": latencies,
-                                   "streaming_compatible": True,
-                                   "data_source": events[-1].data_source if events else "unknown"})
-        for event in events:
-            self.latest_health["data_source"] = event.data_source
+
+        # Save flow summary to repository
+        self.repository.save_flow({
+            "timestamp": timestamp,
+            "src_ip": events[0].src_ip if events else None,
+            "dst_ip": events[0].dst_ip if events else None,
+            "protocol": features.get("protocol"),
+            "packets": features.get("packets", 0),
+            "bytes": features.get("bytes", 0),
+            "anomaly_score": risk["risk_score"],
+            "asset_id": events[0].asset_id if events else None,
+        })
+
+        self.latest_health.update({
+            "status": "HEALTHY",
+            "last_event": timestamp,
+            "queue_depth": 0,
+            "model_latency_ms": latencies,
+            "streaming_compatible": True,
+            "data_source": events[-1].data_source if events else "live_capture",
+        })
+
         if risk["risk_level"] in {"INFO", "LOW", "MEDIUM"} and not risk["persistent"]:
             return None
-        ioc_hit = None
-        if events:
-            for ip in (events[0].src_ip, events[0].dst_ip):
-                if ip:
-                    res = self.ioc_store.lookup(ip)
-                    if res.get("match"):
-                        ioc_hit = {"indicator": ip, **res}
-                        break
-        threat_intel = {"status": "match", **ioc_hit} if ioc_hit else {"status": "clean", "checked": True}
+
+        # Check real threat intel for window endpoints
+        ti_hit = None
+        for ip in (events[0].src_ip, events[0].dst_ip):
+            if ip:
+                ti_res = self.detection_engine.threat_intel.check_ip(ip)
+                if ti_res.get("is_malicious"):
+                    ti_hit = ti_res
+                    break
+
+        threat_intel = {"status": "match", **ti_hit} if ti_hit else {"status": "clean", "checked": True}
+
         alert = {
-            "alert_id": str(uuid.uuid4()), "timestamp": timestamp, "first_seen": timestamp, "last_seen": timestamp,
-            "src_ip": events[0].src_ip if events else None, "dst_ip": events[0].dst_ip if events else None,
-            "src_port": events[0].src_port if events else None, "dst_port": events[0].dst_port if events else None,
-            "protocol": features.get("protocol"), "asset_id": events[0].asset_id if events else None,
-            "asset_criticality": 0.5, "attack_category": _category(features, protocol),
-            "risk_score": risk["risk_score"], "risk_level": risk["risk_level"], "confidence": risk["confidence"],
-            "model_disagreement": result["model_disagreement"], "model_scores": result["scores"],
-            "protocol_evidence": protocol, "baseline_deviation": features.get("baseline_deviation", 0),
+            "alert_id": str(uuid.uuid4()),
+            "timestamp": timestamp,
+            "first_seen": timestamp,
+            "last_seen": timestamp,
+            "src_ip": events[0].src_ip if events else None,
+            "dst_ip": events[0].dst_ip if events else None,
+            "src_port": events[0].src_port if events else None,
+            "dst_port": events[0].dst_port if events else None,
+            "protocol": features.get("protocol"),
+            "asset_id": events[0].asset_id if events else None,
+            "asset_criticality": 0.5,
+            "attack_category": _category(features, protocol),
+            "risk_score": risk["risk_score"],
+            "risk_level": risk["risk_level"],
+            "confidence": risk["confidence"],
+            "model_disagreement": result["model_disagreement"],
+            "model_scores": result["scores"],
+            "protocol_evidence": protocol,
+            "baseline_deviation": features.get("baseline_deviation", 0),
             "feature_values": features,
             "top_features": explanation["top_positive"][:10],
             "explanation": explanation,
-            "threat_intel": threat_intel, "vulnerability_context": {"status": "context_only"},
-            "gateway_context": {"visibility_status": "unavailable"}, "diode_health": self.latest_health,
+            "threat_intel": threat_intel,
+            "vulnerability_context": {"status": "context_only"},
+            "gateway_context": {"visibility_status": "passive_diode"},
+            "diode_health": self.latest_health,
             "model_version": ",".join(a.version for a in self.adapters.values()),
-            "feature_schema_version": "1.0.0", "configuration_version": "default-1",
-            "sensor_version": self.config["system"]["sensor_version"], "incident_id": None,
+            "feature_schema_version": "1.0.0",
+            "configuration_version": "production-1.0",
+            "sensor_version": self.config.get("system", {}).get("sensor_version", "1.0.0"),
+            "incident_id": f"inc_{uuid.uuid4().hex[:12]}",
             "reasons": risk["reasons"],
+            "detection_method": "Multi-Model AI & Anomaly",
+            "recommended_action": "Investigate anomalous traffic burst and compare with baseline.",
         }
-        self.hash_chain.append(alert)
-        self.repository.save_alert(alert)
-        for callback in list(self.subscribers):
-            try:
-                callback(alert)
-            except (RuntimeError, ValueError, TypeError, OSError):
-                continue
+
+        self._finalize_and_save_alert(alert)
         return alert
-
-
-def _top_features(features: dict[str, Any]) -> list[dict[str, Any]]:
-    candidates = [(key, abs(float(value))) for key, value in features.items() if isinstance(value, (int, float))]
-    return [{"feature": k, "value": features[k], "contribution": v} for k, v in sorted(candidates, key=lambda x: x[1], reverse=True)[:10]]
 
 
 def _category(features: dict[str, Any], protocol: dict[str, Any]) -> str:

@@ -1,3 +1,4 @@
+"""Pydantic schemas for network events, alerts, flows, and API requests."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -24,7 +25,7 @@ class TrafficEvent(BaseModel):
     tcp_flags: str | None = None
     dscp: int | None = None
     payload_hex: str | None = None
-    data_source: str = "synthetic"
+    data_source: str = "live_capture"
     asset_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -42,3 +43,19 @@ class BlockRequest(BaseModel):
 
 class ConfigUpdate(BaseModel):
     values: dict[str, Any]
+
+
+class InterfaceSelectRequest(BaseModel):
+    interface_id: str
+
+
+class TokenRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: str
+    expires_in_minutes: int = 480

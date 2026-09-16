@@ -176,6 +176,11 @@ def test_api_endpoints() -> dict[str, Any]:
             ("GET", "/api/alerts", 200),
             ("GET", "/api/traffic", 200),
             ("GET", "/api/metrics", 200),
+            ("GET", "/api/interfaces", 200),
+            ("GET", "/api/capture/stats", 200),
+            ("GET", "/api/rules", 200),
+            ("GET", "/api/system/metrics", 200),
+            ("GET", "/api/threat-intel/status", 200),
         ]
 
         results = {}
@@ -203,7 +208,7 @@ def run_pytest() -> dict[str, Any]:
     """Run pytest test suite."""
     print("[TEST] PyTest regression tests...")
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/test_core.py", "-v", "--tb=short"],
+        [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"],
         capture_output=True,
         text=True,
         cwd=".",
